@@ -1,12 +1,10 @@
-import { build, context } from "esbuild";
-
-const isWatch = process.argv.includes("--watch");
+import { build } from "esbuild";
 
 const buildOptions = {
   entryPoints: ["src/extension.ts"],
   outfile: "dist/extension.js",
   bundle: true,
-  minify: !isWatch,
+  minify: true,
   treeShaking: true,
   platform: "node",
   target: "node18",
@@ -15,13 +13,7 @@ const buildOptions = {
   sourcemap: false,
   legalComments: "none",
   loader: { ".html": "text", ".txt": "text" },
-  drop: isWatch ? [] : ["console", "debugger"],
   logLevel: "info",
 };
 
-if (isWatch) {
-  const ctx = await context(buildOptions);
-  await ctx.watch();
-} else {
-  await build(buildOptions);
-}
+await build(buildOptions);
