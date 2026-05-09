@@ -8,6 +8,7 @@ const RATE_LIMIT_COOLDOWN = 60000;
 // 全局限流状态
 let lastNotifyTime = 0;
 let pendingMessages: string[] = [];
+let flushTimer: ReturnType<typeof setTimeout> | null = null;
 
 // 格式化当前时间 HH:MM:SS
 function formatTime(): string {
@@ -21,8 +22,8 @@ function formatTime(): string {
 // 调用 vscode 消息 API
 function showVscodeMessage(
   msg: string,
-  type: NonNullable<SendMsgOptions["type"]>,
-  buttons: string[],
+  type: NonNullable<SendMsgOptions["type"]> = "info",
+  buttons: string[] = [],
 ): void {
   switch (type) {
     case "warning":
@@ -37,31 +38,41 @@ function showVscodeMessage(
   }
 }
 
+// 发送缓存消息
+function sendPendingMessages(): void {
+  const finalText = pendingMessages.join(" ---- ");
+  pendingMessages = [];
+  lastNotifyTime = Date.now();
+  showVscodeMessage(finalText);
+}
+
 // 发送统一消息
 export function sendMsg(text: string, options: SendMsgOptions = {}): void {
   const { rateLimit = false, type = "info", showConfirm = false } = options;
-  const buttons = showConfirm ? ["知道了"] : [];
   const newText = `[${formatTime()}] ${text}`;
 
   if (!rateLimit) {
-    showVscodeMessage(newText, type, buttons);
+    showVscodeMessage(newText, type, showConfirm ? ["知道了"] : []);
     return;
   }
 
+  // 放入消息队列
+  pendingMessages.push(newText);
+
+  // 检查是否可以发送
   const now = Date.now();
   const canNotify = now - lastNotifyTime >= RATE_LIMIT_COOLDOWN;
 
+  if (flushTimer) {
+    clearTimeout(flushTimer);
+    flushTimer = null;
+  }
+
   if (canNotify) {
-    // 可以发送，带上之前被缓存的消息
-    let finalText = newText;
-    if (pendingMessages.length > 0) {
-      finalText = `${pendingMessages.join(" --- ")} --- ${newText}`;
-      pendingMessages = [];
-    }
-    lastNotifyTime = now;
-    showVscodeMessage(finalText, type, buttons);
+    sendPendingMessages();
   } else {
-    // 被限流，缓存消息等下次一起发
-    pendingMessages.push(newText);
+    flushTimer = setTimeout(() => {
+      sendPendingMessages();
+    }, RATE_LIMIT_COOLDOWN + 30);
   }
 }
