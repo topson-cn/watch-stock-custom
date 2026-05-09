@@ -10,6 +10,19 @@ const CONDITION_TEXT: Record<AlarmCondition, string> = {
   below: "低于",
 };
 
+const CONDITION_OPTIONS = [
+  {
+    label: "$(arrow-up) 价格高于",
+    value: "above" as AlarmCondition,
+    description: "当股票价格上涨到指定价格时触发",
+  },
+  {
+    label: "$(arrow-down) 价格低于",
+    value: "below" as AlarmCondition,
+    description: "当股票价格下跌到指定价格时触发",
+  },
+];
+
 interface AlarmAction {
   label: string;
   description?: string;
@@ -18,21 +31,6 @@ interface AlarmAction {
   kind?: vscode.QuickPickItemKind;
 }
 
-// 验证目标价格是否合法，返回错误信息或 null
-function validateTargetPrice(
-  price: number,
-  condition: AlarmCondition,
-  currentPrice: number,
-): string | null {
-  if (isNaN(price) || price <= 0) return "请输入有效的价格";
-  if (condition === "above" && price <= currentPrice)
-    return "目标价格必须高于当前价格";
-  if (condition === "below" && price >= currentPrice)
-    return "目标价格必须低于当前价格";
-  return null;
-}
-
-// 循环输入目标价格，直到合法或用户取消
 async function inputTargetPrice(
   condition: AlarmCondition,
   currentPrice: number,
@@ -42,16 +40,20 @@ async function inputTargetPrice(
       prompt: `请输入目标价格 (当前价格: ${currentPrice.toFixed(2)})`,
       placeHolder: `例如: ${condition === "above" ? (currentPrice + 1).toFixed(2) : (currentPrice - 1).toFixed(2)}`,
     });
-
     if (!priceInput) return null;
-
     const price = parseFloat(priceInput);
-    const error = validateTargetPrice(price, condition, currentPrice);
-    if (error) {
-      sendMsg(error, { type: "error" });
+    if (isNaN(price) || price <= 0) {
+      sendMsg("请输入有效的价格", { type: "error" });
       continue;
     }
-
+    if (condition === "above" && price <= currentPrice) {
+      sendMsg("目标价格必须高于当前价格", { type: "error" });
+      continue;
+    }
+    if (condition === "below" && price >= currentPrice) {
+      sendMsg("目标价格必须低于当前价格", { type: "error" });
+      continue;
+    }
     return price;
   }
 }
@@ -80,21 +82,8 @@ async function addAlarm(): Promise<void> {
   });
   if (!selectedStock) return;
 
-  const conditionOptions = [
-    {
-      label: "$(arrow-up) 价格高于",
-      value: "above" as AlarmCondition,
-      description: "当股票价格上涨到指定价格时触发",
-    },
-    {
-      label: "$(arrow-down) 价格低于",
-      value: "below" as AlarmCondition,
-      description: "当股票价格下跌到指定价格时触发",
-    },
-  ];
-
   const selectedCondition = await vscode.window.showQuickPick(
-    conditionOptions,
+    CONDITION_OPTIONS,
     { placeHolder: "选择触发条件" },
   );
   if (!selectedCondition) return;
@@ -113,7 +102,6 @@ async function addAlarm(): Promise<void> {
     stockCode: selectedStock.code.toLowerCase(),
     targetPrice,
     condition: selectedCondition.value,
-    createdAt: new Date().toISOString(),
   };
   alarms.push(alarm);
   await config.saveAlarms(alarms);
@@ -127,19 +115,6 @@ async function addAlarm(): Promise<void> {
 async function removeAlarm(alarmId: string): Promise<void> {
   const alarms = config.getAlarms().filter((a) => a.id !== alarmId);
   await config.saveAlarms(alarms);
-}
-
-// 确认后清空
-async function confirmClearAll(): Promise<void> {
-  const confirm = await vscode.window.showWarningMessage(
-    "确定要删除所有闹钟吗？",
-    "确定",
-    "取消",
-  );
-  if (confirm === "确定") {
-    await config.saveAlarms([]);
-    sendMsg("已删除所有闹钟");
-  }
 }
 
 // 主入口：管理闹钟
@@ -214,7 +189,16 @@ export async function manageAlarms(): Promise<void> {
       }
       break;
     case "clearAll":
-      await confirmClearAll();
+      if (
+        (await vscode.window.showWarningMessage(
+          "确定要删除所有闹钟吗？",
+          "确定",
+          "取消",
+        )) === "确定"
+      ) {
+        await config.saveAlarms([]);
+        sendMsg("已删除所有闹钟");
+      }
       break;
   }
 }
@@ -224,24 +208,23 @@ export async function checkAlarms(stockInfos: Stock[]): Promise<void> {
   const alarms = config.getAlarms();
   if (alarms.length === 0) return;
 
-  const triggered: Array<Alarm & { stockName: string; currentPrice: number }> =
-    [];
   const remaining: Alarm[] = [];
+  const triggered: { alarm: Alarm; name: string; price: number }[] = [];
 
   for (const alarm of alarms) {
-    const stockInfo = stockInfos.find((s) => s.code === alarm.stockCode);
-    if (!stockInfo) {
+    const info = stockInfos.find((s) => s.code === alarm.stockCode);
+    if (!info) {
       remaining.push(alarm);
       continue;
     }
 
-    const currentPrice = parseFloat(stockInfo.current);
-    const isTriggered =
-      (alarm.condition === "above" && currentPrice >= alarm.targetPrice) ||
-      (alarm.condition === "below" && currentPrice <= alarm.targetPrice);
+    const price = parseFloat(info.current);
+    const hit =
+      (alarm.condition === "above" && price >= alarm.targetPrice) ||
+      (alarm.condition === "below" && price <= alarm.targetPrice);
 
-    if (isTriggered) {
-      triggered.push({ ...alarm, stockName: stockInfo.name, currentPrice });
+    if (hit) {
+      triggered.push({ alarm, name: info.name, price });
     } else {
       remaining.push(alarm);
     }
@@ -251,9 +234,9 @@ export async function checkAlarms(stockInfos: Stock[]): Promise<void> {
     await config.saveAlarms(remaining);
   }
 
-  for (const alarm of triggered) {
+  for (const { alarm, name, price } of triggered) {
     sendMsg(
-      `⏰ 价格闹钟触发: ${alarm.stockName}(${alarm.stockCode}) 当前价格 ${alarm.currentPrice} 已${CONDITION_TEXT[alarm.condition]} ${alarm.targetPrice}`,
+      `⏰ 价格闹钟触发: ${name}(${alarm.stockCode}) 当前价格 ${price} 已${CONDITION_TEXT[alarm.condition]} ${alarm.targetPrice}`,
     );
   }
 }

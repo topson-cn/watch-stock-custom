@@ -92,7 +92,6 @@ export interface Alarm {
   stockCode: string;
   targetPrice: number;
   condition: AlarmCondition;
-  createdAt: string;
 }
 
 export interface LockInfo {
