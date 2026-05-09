@@ -1,6 +1,23 @@
 // 全局类型定义
+import type * as vscode from "vscode";
 
 export type PriceType = "up" | "down" | "none" | "err";
+
+// 状态栏对外契约
+export interface StatusBar {
+  initialize(): void;
+  render(stocks: string[], stockInfos: Stock[]): void;
+  setHidden(): void;
+  getStatusBarItem(): vscode.StatusBarItem | null;
+  dispose(): void;
+}
+
+// 应用状态
+export interface AppState {
+  statusBar: StatusBar;
+  userForced: boolean | null; // null=跟随市场 true=强制显示 false=强制隐藏
+  refreshTimer: NodeJS.Timeout | null;
+}
 
 export type AlarmCondition = "above" | "below";
 

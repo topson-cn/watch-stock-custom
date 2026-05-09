@@ -15,7 +15,7 @@ import {
 import { sendMsg } from "./utils/msg";
 import { config } from "./config";
 import { getIsVisible, refreshData } from "./refresher";
-import type { AppState } from "./appState";
+import type { AppState } from "./types";
 
 // 命令 ID 映射
 const COMMAND_MAP: Record<string, string> = {

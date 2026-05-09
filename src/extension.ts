@@ -1,14 +1,20 @@
 // 摸鱼看盘 - VS Code 入口
 import * as vscode from "vscode";
-import { createAppState, type AppState } from "./appState";
 import { registerCommands } from "./commands";
 import { startRefreshTimer, stopRefreshTimer } from "./refresher";
+import { StatusBarManager } from "./ui/statusBar";
+import type { AppState } from "./types";
 
 // 应用状态
 let appState: AppState | null = null;
 
 export function activate(context: vscode.ExtensionContext): void {
-  appState = createAppState();
+  appState = {
+    statusBar: new StatusBarManager(),
+    userForced: null,
+    refreshTimer: null,
+  };
+  appState.statusBar.initialize();
   registerCommands(context, appState);
   startRefreshTimer(appState);
 }

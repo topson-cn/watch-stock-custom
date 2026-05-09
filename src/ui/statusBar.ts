@@ -2,7 +2,7 @@
 import * as vscode from "vscode";
 import { config } from "../config";
 import { formatAmount } from "../utils/stock";
-import type { Stock } from "../types";
+import type { Stock, StatusBar } from "../types";
 
 // 判断涨跌方向：涨/平返回 true
 function isPriceUp(changeValue: string): boolean {
@@ -14,7 +14,7 @@ function isLockState(priceType?: string): boolean {
   return priceType === "up" || priceType === "down";
 }
 
-export class StatusBarManager {
+export class StatusBarManager implements StatusBar {
   private statusBarItem: vscode.StatusBarItem | null = null;
   private hidden = false;
 

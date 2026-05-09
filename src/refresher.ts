@@ -8,7 +8,7 @@ import {
   isMorningAuctionTime,
   isAfternoonAuctionTime,
 } from "./utils/time";
-import type { AppState } from "./appState";
+import type { AppState } from "./types";
 
 // 刷新间隔 5 秒
 const REFRESH_INTERVAL = 5000;
