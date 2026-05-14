@@ -16,6 +16,11 @@ export function isFund(code: string, name: string, current: number): boolean {
   );
 }
 
+// 是否为基金代码（6位纯数字且首位为 5 或 1）
+export function isFundCode(code: string): boolean {
+  return /^[51]\d{5}$/.test(code);
+}
+
 // 价格小数位数
 export function getDecimals(isETF: boolean): number {
   return isETF ? 3 : 2;
@@ -28,7 +33,7 @@ export function safeNumber(val: unknown): number {
 }
 
 // 验证股票代码格式
-export function isValidStockCode(code: unknown): code is string {
+export function isValidStockCode(code: unknown): boolean {
   if (!code || typeof code !== "string") return false;
   return /^(sh|sz|bj)[0-9]{6}$/i.test(code);
 }

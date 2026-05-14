@@ -1,7 +1,7 @@
 // 股票管理：增/删/清/排序
 import * as vscode from "vscode";
 import { sendMsg } from "../utils/msg";
-import { isValidStockCode } from "../utils/stock";
+import { isValidStockCode, isFundCode } from "../utils/stock";
 import { searchStockCode } from "../services/stockSearch";
 import { getStockList } from "../services/stockService";
 import { config, moveStock } from "../config";
@@ -22,9 +22,15 @@ export async function addStock(): Promise<boolean> {
   if (!input) return false;
 
   const stockInput = input.trim();
-  let stockCode: string | null = stockInput;
+  let stockCode: string | null = null;
 
-  if (!isValidStockCode(stockInput)) {
+  if (isValidStockCode(stockInput)) {
+    stockCode = stockInput;
+  } else if (isFundCode(stockInput)) {
+    stockCode = stockInput.startsWith("5")
+      ? `sh${stockInput}`
+      : `sz${stockInput}`;
+  } else {
     stockCode = await searchStockCode(stockInput);
   }
 
