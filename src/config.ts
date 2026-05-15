@@ -77,6 +77,7 @@ export interface ConfigShape {
   autoHideByMarket: boolean;
   priceAlarms: Alarm[];
   enableLockTip: boolean;
+  enableLargeTip: boolean;
   showLockCount: boolean;
 }
 
@@ -89,6 +90,7 @@ const DEFAULTS: ConfigShape = {
   autoHideByMarket: false,
   priceAlarms: [],
   enableLockTip: false,
+  enableLargeTip: false,
   showLockCount: false,
 };
 
@@ -125,6 +127,7 @@ export const config = {
   getShowChangeValue: () => read("showChangeValue"),
   getAutoHideByMarket: () => read("autoHideByMarket"),
   getEnableLockTip: () => read("enableLockTip"),
+  getEnableLargeTip: () => read("enableLargeTip"),
   getShowLockCount: () => read("showLockCount"),
   getAlarms: () => read("priceAlarms"),
   async saveAlarms(alarms: Alarm[]): Promise<void> {

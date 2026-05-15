@@ -125,7 +125,6 @@ npm run build       # 类型检查 + esbuild 打包 + vsce 打包成 .vsix
 - 不要在业务代码中直接调用 `vscode.workspace.getConfiguration`，请走 `config.ts`
 - 不要在 `commands.ts` 之外注册命令
 - 不要在状态栏渲染中做异步请求，请先在 `refresher.ts` 拉好数据
-- 不要主动创建文档 / README 文件，除非用户明确要求
 
 ## 反馈与发布
 

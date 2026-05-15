@@ -2,6 +2,7 @@
 import { config } from "./config";
 import { getStockList } from "./services/stockService";
 import { calculateLockInfo, checkLockTip } from "./managers/lockManager";
+import { checkLargeTip } from "./managers/largeManager";
 import { checkAlarms } from "./managers/alarmManager";
 import {
   isTradingTime,
@@ -36,8 +37,9 @@ export async function refreshData(state: AppState): Promise<void> {
     await checkAlarms(stockInfos);
   }
 
-  if (!isMorningAuction && !isAfternoonAuction && config.getEnableLockTip()) {
-    checkLockTip(stockInfos);
+  if (!isMorningAuction && !isAfternoonAuction) {
+    if (config.getEnableLockTip()) checkLockTip(stockInfos);
+    if (config.getEnableLargeTip()) checkLargeTip(stockInfos);
   }
 
   if (getIsVisible(state)) {
