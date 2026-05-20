@@ -28,27 +28,25 @@ function getLargeChangeMessage(history: LargeSnapshot[], stock: Stock): string {
   if (history.length < HISTORY_SIZE) return "";
   // 处理时间异常
   if (
-    history[6].timestamp - history[0].timestamp > 40 ||
-    history[6].timestamp - history[0].timestamp < 20
+    history[6].timestamp - history[0].timestamp > 35 ||
+    history[6].timestamp - history[0].timestamp < 25
   )
     return "";
-  const lastAmount = history[6].amount;
+  const lastAmount = history[6].amount - history[5].amount;
   // 未达到绝对金额门槛则不视为大单
   if (lastAmount < MIN_LARGE_AMOUNT * 1.6) return "";
 
-  // 计算前6个数据成交额平均值，作为近期正常成交基准
-  let sumAmount = 0;
-  for (let i = 0; i < 6; i++) {
-    sumAmount += history[i].amount;
-  }
-
+  // 计算前5天成交额之和
+  const sumAmount = history[5].amount - history[0].amount;
+  // 计算前5天成交额平均值
+  const avgAmount = sumAmount / 5;
   // 均量差值
-  const deltaAmount = lastAmount - sumAmount / 6;
+  const deltaAmount = lastAmount - avgAmount;
   // 放量倍率
-  const ratio = deltaAmount / sumAmount / 6;
+  const ratio = deltaAmount / avgAmount;
   // 价格变化方向：最近一次间隔内的涨跌判断买卖意图
   const priceDiff = history[6].current - history[5].current;
-  // 排除缩量/放量<1.6倍
+  // 排除缩量/放量<1.6倍/价格无变化
   if (deltaAmount < MIN_LARGE_AMOUNT || ratio < 1.6 || priceDiff === 0)
     return "";
 
