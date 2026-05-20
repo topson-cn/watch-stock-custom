@@ -55,7 +55,7 @@ function getLargeChangeMessage(history: LargeSnapshot[], stock: Stock): string {
 
   const emoji = priceDiff > 0 ? "💰" : "💸";
   const direction = priceDiff > 0 ? "买入" : "卖出";
-  const size = ratio > 3 ? "超大" : "大";
+  const size = ratio > 5 && deltaAmount > MIN_LARGE_AMOUNT * 5 ? "超大" : "大";
   return `${emoji} ${stock.name} ${size}单${direction}${formatAmount(deltaAmount)}`;
 }
 
