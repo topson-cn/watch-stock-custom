@@ -1,7 +1,8 @@
 // 合并 vscodeConfig + staticConfig，提供单一配置访问入口
 import * as vscode from "vscode";
 import { isValidStockCode } from "./utils/stock";
-import type { Alarm, IndustryConfig } from "./types";
+import { isTradingTime } from "./utils/time";
+import type { Alarm, IndustryConfig, AppState } from "./types";
 
 const SECTION = "watch-stock";
 
@@ -77,6 +78,7 @@ export interface ConfigShape {
   autoHideByMarket: boolean;
   priceAlarms: Alarm[];
   enableLockTip: boolean;
+  enableLargeTip: boolean;
   showLockCount: boolean;
 }
 
@@ -89,6 +91,7 @@ const DEFAULTS: ConfigShape = {
   autoHideByMarket: false,
   priceAlarms: [],
   enableLockTip: false,
+  enableLargeTip: false,
   showLockCount: false,
 };
 
@@ -125,6 +128,7 @@ export const config = {
   getShowChangeValue: () => read("showChangeValue"),
   getAutoHideByMarket: () => read("autoHideByMarket"),
   getEnableLockTip: () => read("enableLockTip"),
+  getEnableLargeTip: () => read("enableLargeTip"),
   getShowLockCount: () => read("showLockCount"),
   getAlarms: () => read("priceAlarms"),
   async saveAlarms(alarms: Alarm[]): Promise<void> {
@@ -135,6 +139,12 @@ export const config = {
     );
   },
 };
+
+// 状态栏是否应该显示
+export function getIsVisible(state: AppState, now?: Date): boolean {
+  if (state.userForced !== null) return state.userForced;
+  return config.getAutoHideByMarket() ? isTradingTime(now || new Date()) : true;
+}
 
 // 列表元素移动
 export function moveStock(
