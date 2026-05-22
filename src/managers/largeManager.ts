@@ -37,9 +37,9 @@ function getLargeChangeMessage(history: LargeSnapshot[], stock: Stock): string {
   // 未达到绝对金额门槛则不视为大单
   if (lastAmount < MIN_LARGE_AMOUNT * 2) return "";
 
-  // 计算前5天成交额之和
+  // 计算前5次成交额之和
   const sumAmount = history[5].amount - history[0].amount;
-  // 计算前5天成交额平均值
+  // 计算前5次成交额平均值
   const avgAmount = sumAmount / 5;
   // 均量差值
   const deltaAmount = lastAmount - avgAmount;

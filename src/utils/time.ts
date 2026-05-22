@@ -19,7 +19,7 @@ export function isTradingTime(now: Date): boolean {
   if (day === 0 || day === 6) return false;
   const minutes = now.getHours() * 60 + now.getMinutes();
   return (
-    (minutes >= TIME_MORNING_START && minutes <= TIME_MORNING_END) ||
+    (minutes >= TIME_MORNING_AUCTION_START && minutes <= TIME_MORNING_END) ||
     (minutes >= TIME_AFTERNOON_START && minutes <= TIME_AFTERNOON_END)
   );
 }
