@@ -7,8 +7,10 @@
 <script>
   const StockChart = (() => {
     /* ---- 颜色常量 ---- */
-    const C_UP = "#c94c4c";
-    const C_DN = "#2d8a2d";
+    /* IS_COLORFUL 由 stockHome.html 注入：false 时涨跌统一用编辑器默认前景色 */
+    const C_FG = "var(--vscode-editor-foreground)";
+    const C_UP = IS_COLORFUL ? "#c94c4c" : C_FG;
+    const C_DN = IS_COLORFUL ? "#2d8a2d" : C_FG;
     const C_GRID = "rgba(128,128,128,0.18)";
     const C_BDR = "rgba(128,128,128,0.3)";
     const C_AXIS = "var(--vscode-descriptionForeground,#888)";
@@ -224,11 +226,12 @@
           i > 0 && minuteData[i - 1].price != null
             ? minuteData[i - 1].price
             : minuteData[i].price;
-        const c =
-          minuteData[i].price != null && minuteData[i].price >= prevPrice
-            ? C_UP
-            : C_DN;
-        bars += `<rect x="${(xOf(i) - barW / 2).toFixed(1)}" y="${(vt + vH - bH).toFixed(1)}" width="${barW.toFixed(1)}" height="${bH.toFixed(1)}" fill="${c}" fill-opacity="0.65"/>`;
+        const isUp =
+          minuteData[i].price != null && minuteData[i].price >= prevPrice;
+        const c = isUp ? C_UP : C_DN;
+        // 涨柱深、跌柱浅，便于黑白模式下凭明暗区分涨跌
+        const op = isUp ? 0.9 : 0.4;
+        bars += `<rect x="${(xOf(i) - barW / 2).toFixed(1)}" y="${(vt + vH - bH).toFixed(1)}" width="${barW.toFixed(1)}" height="${bH.toFixed(1)}" fill="${c}" fill-opacity="${op}"/>`;
       }
       volSvg.setAttribute("width", W);
       volSvg.setAttribute("height", H);

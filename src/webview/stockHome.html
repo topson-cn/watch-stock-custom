@@ -36,6 +36,12 @@
         overflow: auto;
       }
 
+      /* 黑白模式（未开启彩色视图）：涨跌统一使用编辑器默认前景色 */
+      body.mono {
+        --c-up: var(--vscode-editor-foreground);
+        --c-dn: var(--vscode-editor-foreground);
+      }
+
       /* tab 栏 */
       .tab-bar {
         display: flex;
@@ -112,7 +118,7 @@
     </style>
   </head>
 
-  <body>
+  <body class="{{BODY_CLASS}}">
     <div class="tab-bar" id="tab-bar"></div>
     <div class="main">
       <div class="content" id="content">
@@ -130,6 +136,9 @@
 
     <script nonce="{{NONCE}}">
       const vscode = acquireVsCodeApi();
+
+      /* 是否开启彩色视图（false 时图表/文字均用编辑器默认前景色） */
+      const IS_COLORFUL = "{{COLORFUL}}" === "true";
 
       /* ---- 状态 ---- */
       let stocks = [];
