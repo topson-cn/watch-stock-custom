@@ -253,11 +253,12 @@ export class StockHomePanel {
       extractScript(stockChartHtml),
     ].join("\n");
 
-    const colorful = config.getColorful();
+    const enableColorful = config.getEnableColorful();
     return stockHomeHtml
       .replace(/\{\{NONCE\}\}/g, nonce)
-      .replace("{{COLORFUL}}", colorful ? "true" : "false")
-      .replace("{{BODY_CLASS}}", colorful ? "" : "mono")      .replace("{{OVERVIEW_HTML}}", stripScript(stockOverviewHtml))
+      .replace("{{COLORFUL}}", enableColorful ? "true" : "false")
+      .replace("{{BODY_CLASS}}", enableColorful ? "" : "mono")
+      .replace("{{OVERVIEW_HTML}}", stripScript(stockOverviewHtml))
       .replace("{{DETAIL_HTML}}", stripScript(stockDetailHtml))
       .replace("/* {{FRAGMENT_SCRIPTS}} */", fragmentScripts);
   }
