@@ -62,8 +62,222 @@
     border-bottom: none;
     padding-bottom: 0;
   }
+  .watchlist-wrap {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .watchlist-head,
+  .watch-row {
+    display: grid;
+    grid-template-columns: minmax(160px, 1.4fr) 96px 96px 96px;
+    align-items: center;
+    gap: 14px;
+  }
+  .watchlist-head {
+    color: var(--vscode-descriptionForeground, #888);
+    font-size: 12px;
+    padding: 0 6px 8px;
+    border-bottom: 1px solid var(--vscode-panel-border, #454545);
+  }
+  .watch-row {
+    min-height: 58px;
+    padding: 8px 6px;
+    border-bottom: 1px solid rgba(128, 128, 128, 0.12);
+    cursor: pointer;
+  }
+  .watch-row:hover {
+    background: var(--vscode-list-hoverBackground, rgba(128, 128, 128, 0.08));
+  }
+  .watch-name {
+    font-size: 15px;
+    font-weight: 600;
+    line-height: 1.2;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .watch-meta {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-top: 5px;
+    color: var(--vscode-descriptionForeground, #888);
+    font-size: 12px;
+  }
+  .exchange-tag {
+    min-width: 18px;
+    padding: 1px 3px;
+    border-radius: 2px;
+    background: rgba(201, 76, 76, 0.14);
+    color: #c94c4c;
+    font-size: 10px;
+    text-align: center;
+    line-height: 1.2;
+  }
+  .watch-price {
+    font-size: 16px;
+    text-align: right;
+  }
+  .watch-change {
+    justify-self: end;
+    min-width: 74px;
+    padding: 3px 6px;
+    border-radius: 3px;
+    font-size: 15px;
+    text-align: right;
+  }
+  .watch-change.up {
+    background: rgba(201, 76, 76, 0.12);
+  }
+  .watch-change.dn {
+    background: rgba(45, 138, 45, 0.12);
+  }
+  .watch-spark {
+    width: 84px;
+    height: 30px;
+  }
+  .position-summary {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 8px;
+    margin-bottom: 8px;
+  }
+  .position-card {
+    border: 1px solid var(--vscode-panel-border, #454545);
+    border-radius: 3px;
+    padding: 9px 10px;
+  }
+  .position-card-label {
+    color: var(--vscode-descriptionForeground, #888);
+    font-size: 12px;
+  }
+  .position-card-value {
+    margin-top: 5px;
+    font-size: 16px;
+    font-weight: 600;
+  }
+  .position-row,
+  .position-head {
+    display: grid;
+    grid-template-columns: minmax(150px, 1.3fr) 78px 86px 86px 96px 96px 86px;
+    align-items: center;
+    gap: 12px;
+  }
+  .position-head {
+    color: var(--vscode-descriptionForeground, #888);
+    font-size: 12px;
+    padding: 0 6px 8px;
+    border-bottom: 1px solid var(--vscode-panel-border, #454545);
+  }
+  .position-row {
+    min-height: 54px;
+    padding: 8px 6px;
+    border-bottom: 1px solid rgba(128, 128, 128, 0.12);
+    cursor: pointer;
+  }
+  .position-row:hover {
+    background: var(--vscode-list-hoverBackground, rgba(128, 128, 128, 0.08));
+  }
+  .num {
+    text-align: right;
+  }
+  .closed-row,
+  .closed-head {
+    display: grid;
+    grid-template-columns: minmax(150px, 1.2fr) 78px 86px 86px 96px 96px 120px;
+    align-items: center;
+    gap: 12px;
+  }
+  .closed-head {
+    color: var(--vscode-descriptionForeground, #888);
+    font-size: 12px;
+    padding: 0 6px 8px;
+    border-bottom: 1px solid var(--vscode-panel-border, #454545);
+  }
+  .closed-row {
+    min-height: 54px;
+    padding: 8px 6px;
+    border-bottom: 1px solid rgba(128, 128, 128, 0.12);
+  }
+  @media (max-width: 720px) {
+    .watchlist-head,
+    .watch-row {
+      grid-template-columns: minmax(140px, 1fr) 76px 82px;
+    }
+    .watch-spark,
+    .watchlist-head .spark-col {
+      display: none;
+    }
+    .position-summary {
+      grid-template-columns: repeat(2, 1fr);
+    }
+    .position-row,
+    .position-head {
+      grid-template-columns: minmax(140px, 1fr) 80px 86px 86px;
+    }
+    .position-row .hide-mobile,
+    .position-head .hide-mobile {
+      display: none;
+    }
+    .closed-row,
+    .closed-head {
+      grid-template-columns: minmax(140px, 1fr) 80px 86px 90px;
+    }
+    .closed-row .hide-mobile,
+    .closed-head .hide-mobile {
+      display: none;
+    }
+  }
 </style>
-<div class="overview-wrap" id="overview-wrap">
+<div class="watchlist-wrap" id="watchlist-wrap">
+  <div class="overview-header">
+    <div class="overview-title">自选股票</div>
+  </div>
+  <div class="watchlist-head">
+    <span>股票</span>
+    <span class="spark-col">走势</span>
+    <span style="text-align: right">最新价</span>
+    <span style="text-align: right">涨跌幅</span>
+  </div>
+  <div id="watchlist-rows"></div>
+</div>
+
+<div class="watchlist-wrap" id="positions-wrap" style="display: none">
+  <div class="overview-header">
+    <div class="overview-title">持仓收益</div>
+  </div>
+  <div class="position-summary" id="position-summary"></div>
+  <div class="position-head">
+    <span>股票</span>
+    <span class="num">数量</span>
+    <span class="num hide-mobile">成本价</span>
+    <span class="num">最新价</span>
+    <span class="num hide-mobile">成本金额</span>
+    <span class="num hide-mobile">市值</span>
+    <span class="num">盈亏</span>
+  </div>
+  <div id="position-rows"></div>
+</div>
+
+<div class="watchlist-wrap" id="closed-positions-wrap" style="display: none">
+  <div class="overview-header">
+    <div class="overview-title">已清除持仓</div>
+  </div>
+  <div class="position-summary" id="closed-position-summary"></div>
+  <div class="closed-head">
+    <span>股票</span>
+    <span class="num">数量</span>
+    <span class="num hide-mobile">成本价</span>
+    <span class="num hide-mobile">卖出价</span>
+    <span class="num hide-mobile">成本金额</span>
+    <span class="num">已实现</span>
+    <span class="num">清除时间</span>
+  </div>
+  <div id="closed-position-rows"></div>
+</div>
+
+<div class="overview-wrap" id="market-overview-wrap" style="display: none">
   <div class="overview-header">
     <div class="overview-title">大盘指数</div>
     <button class="btn-refresh" id="refresh-btn">↻ 刷新</button>
@@ -78,6 +292,240 @@
 </div>
 
 <script>
+  function getExchangeLabel(code) {
+    const prefix = String(code || "").slice(0, 2).toUpperCase();
+    return prefix || "--";
+  }
+
+  function formatPlainCode(code) {
+    return String(code || "").slice(2);
+  }
+
+  function getQuote(stock) {
+    return quoteDataMap[stock.code] || stock;
+  }
+
+  function getChangeClass(stock) {
+    const value = parseFloat(stock.changePercent || "0");
+    return value > 0 ? "up" : value < 0 ? "dn" : "gray";
+  }
+
+  function getChangeText(stock) {
+    const value = parseFloat(stock.changePercent || "0");
+    const sign = value > 0 ? "+" : "";
+    return `${sign}${stock.changePercent}%`;
+  }
+
+  function buildSparkline(stock) {
+    const quote = getQuote(stock);
+    const points = [
+      parseFloat(quote.close ?? stock.preClose),
+      parseFloat(quote.open ?? stock.preClose),
+      parseFloat(quote.low ?? stock.current),
+      parseFloat(stock.current),
+      parseFloat(quote.high ?? stock.current),
+      parseFloat(stock.current),
+    ].filter((n) => !Number.isNaN(n) && n > 0);
+    if (points.length < 2) return "";
+
+    const min = Math.min(...points);
+    const max = Math.max(...points);
+    const span = max - min || Math.max(max, 1) * 0.01;
+    const path = points
+      .map((p, i) => {
+        const x = (i / (points.length - 1)) * 84;
+        const y = 26 - ((p - min) / span) * 22;
+        return `${x.toFixed(1)},${y.toFixed(1)}`;
+      })
+      .join(" ");
+    const cls = getChangeClass(stock);
+    const color = cls === "up" ? "var(--c-up)" : cls === "dn" ? "var(--c-dn)" : "var(--c-axis)";
+
+    return `<svg class="watch-spark" viewBox="0 0 84 30" aria-hidden="true">
+      <polyline points="${path}" fill="none" stroke="${color}" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
+    </svg>`;
+  }
+
+  function renderWatchlistRows() {
+    const container = $("watchlist-rows");
+    if (!container) return;
+    if (!stocks?.length) {
+      container.innerHTML =
+        '<div style="padding: 24px 6px; color: var(--vscode-descriptionForeground, #888);">暂无自选股票</div>';
+      return;
+    }
+
+    container.innerHTML = stocks
+      .map((s) => {
+        const cls = getChangeClass(s);
+        return `<div class="watch-row" data-code="${escHtml(s.code)}">
+          <div>
+            <div class="watch-name">${escHtml(s.name)}</div>
+            <div class="watch-meta">
+              <span class="exchange-tag">${escHtml(getExchangeLabel(s.code))}</span>
+              <span>${escHtml(formatPlainCode(s.code))}</span>
+            </div>
+          </div>
+          <div>${buildSparkline(s)}</div>
+          <div class="watch-price">${escHtml(s.current)}</div>
+          <div class="watch-change ${cls}">${escHtml(getChangeText(s))}</div>
+        </div>`;
+      })
+      .join("");
+  }
+
+  function fmtCurrency(value) {
+    if (value == null || isNaN(value)) return "-";
+    return Number(value).toLocaleString("zh-CN", {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    });
+  }
+
+  function fmtShares(value) {
+    if (value == null || isNaN(value)) return "-";
+    return Number(value).toLocaleString("zh-CN", {
+      maximumFractionDigits: 2,
+    });
+  }
+
+  function fmtRate(value) {
+    if (value == null || isNaN(value)) return "-";
+    const pct = Number(value) * 100;
+    const sign = pct > 0 ? "+" : "";
+    return `${sign}${pct.toFixed(2)}%`;
+  }
+
+  function fmtDateTime(value) {
+    if (!value) return "-";
+    const d = new Date(value);
+    if (Number.isNaN(d.getTime())) return value;
+    const pad = (n) => String(n).padStart(2, "0");
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  }
+
+  function getProfitClass(value) {
+    return value > 0 ? "up" : value < 0 ? "dn" : "gray";
+  }
+
+  function renderPositionRows() {
+    const summary = $("position-summary");
+    const rows = $("position-rows");
+    if (!summary || !rows) return;
+
+    if (!positions?.length) {
+      summary.innerHTML = "";
+      rows.innerHTML =
+        '<div style="padding: 24px 6px; color: var(--vscode-descriptionForeground, #888);">暂无持仓数据，请在菜单中选择“管理持仓”录入。</div>';
+      return;
+    }
+
+    const totals = positions.reduce(
+      (acc, p) => {
+        acc.costAmount += Number(p.costAmount) || 0;
+        acc.marketValue += Number(p.marketValue) || 0;
+        acc.profit += Number(p.profit) || 0;
+        return acc;
+      },
+      { costAmount: 0, marketValue: 0, profit: 0 },
+    );
+    const totalRate =
+      totals.costAmount > 0 ? totals.profit / totals.costAmount : 0;
+    const totalCls = getProfitClass(totals.profit);
+
+    summary.innerHTML = [
+      ["总成本", fmtCurrency(totals.costAmount), ""],
+      ["总市值", fmtCurrency(totals.marketValue), ""],
+      ["预估收益", fmtCurrency(totals.profit), totalCls],
+      ["收益率", fmtRate(totalRate), totalCls],
+    ]
+      .map(
+        ([label, value, cls]) =>
+          `<div class="position-card"><div class="position-card-label">${label}</div><div class="position-card-value ${cls}">${value}</div></div>`,
+      )
+      .join("");
+
+    rows.innerHTML = positions
+      .map((p) => {
+        const cls = getProfitClass(p.profit);
+        return `<div class="position-row" data-code="${escHtml(p.stockCode)}">
+          <div>
+            <div class="watch-name">${escHtml(p.name)}</div>
+            <div class="watch-meta">
+              <span class="exchange-tag">${escHtml(getExchangeLabel(p.stockCode))}</span>
+              <span>${escHtml(formatPlainCode(p.stockCode))}</span>
+            </div>
+          </div>
+          <div class="num">${escHtml(fmtShares(p.shares))}</div>
+          <div class="num hide-mobile">${escHtml(fmtCurrency(p.costPrice))}</div>
+          <div class="num">${escHtml(fmtCurrency(p.currentPrice))}</div>
+          <div class="num hide-mobile">${escHtml(fmtCurrency(p.costAmount))}</div>
+          <div class="num hide-mobile">${escHtml(fmtCurrency(p.marketValue))}</div>
+          <div class="num ${cls}">${escHtml(fmtCurrency(p.profit))}<br /><span style="font-size: 11px">${escHtml(fmtRate(p.profitRate))}</span></div>
+        </div>`;
+      })
+      .join("");
+  }
+
+  function renderClosedPositionRows() {
+    const summary = $("closed-position-summary");
+    const rows = $("closed-position-rows");
+    if (!summary || !rows) return;
+
+    if (!closedPositions?.length) {
+      summary.innerHTML = "";
+      rows.innerHTML =
+        '<div style="padding: 24px 6px; color: var(--vscode-descriptionForeground, #888);">暂无已清除持仓。</div>';
+      return;
+    }
+
+    const totals = closedPositions.reduce(
+      (acc, p) => {
+        acc.costAmount += Number(p.costAmount) || 0;
+        acc.closeAmount += Number(p.closeAmount) || 0;
+        acc.realizedProfit += Number(p.realizedProfit) || 0;
+        return acc;
+      },
+      { costAmount: 0, closeAmount: 0, realizedProfit: 0 },
+    );
+    const totalRate =
+      totals.costAmount > 0 ? totals.realizedProfit / totals.costAmount : 0;
+    const totalCls = getProfitClass(totals.realizedProfit);
+
+    summary.innerHTML = [
+      ["历史成本", fmtCurrency(totals.costAmount), ""],
+      ["清除金额", fmtCurrency(totals.closeAmount), ""],
+      ["已实现收益", fmtCurrency(totals.realizedProfit), totalCls],
+      ["收益率", fmtRate(totalRate), totalCls],
+    ]
+      .map(
+        ([label, value, cls]) =>
+          `<div class="position-card"><div class="position-card-label">${label}</div><div class="position-card-value ${cls}">${value}</div></div>`,
+      )
+      .join("");
+
+    rows.innerHTML = closedPositions
+      .map((p) => {
+        const cls = getProfitClass(p.realizedProfit);
+        return `<div class="closed-row">
+          <div>
+            <div class="watch-name">${escHtml(p.name)}</div>
+            <div class="watch-meta">
+              <span class="exchange-tag">${escHtml(getExchangeLabel(p.stockCode))}</span>
+              <span>${escHtml(formatPlainCode(p.stockCode))}</span>
+            </div>
+          </div>
+          <div class="num">${escHtml(fmtShares(p.shares))}</div>
+          <div class="num hide-mobile">${escHtml(fmtCurrency(p.costPrice))}</div>
+          <div class="num hide-mobile">${escHtml(fmtCurrency(p.sellPrice))}</div>
+          <div class="num hide-mobile">${escHtml(fmtCurrency(p.costAmount))}</div>
+          <div class="num ${cls}">${escHtml(fmtCurrency(p.realizedProfit))}<br /><span style="font-size: 11px">${escHtml(fmtRate(p.realizedProfitRate))}</span></div>
+          <div class="num">${escHtml(fmtDateTime(p.closedAt))}</div>
+        </div>`;
+      })
+      .join("");
+  }
+
   /**
    * 通用卡片渲染
    * @param {HTMLElement} container - 容器元素
@@ -133,7 +581,11 @@
   }
 
   overviewContainer.addEventListener("click", (e) => {
-    if (e.target.closest("#refresh-btn")) {
+    const row = e.target.closest(".watch-row");
+    const positionRow = e.target.closest(".position-row");
+    if (row?.dataset.code || positionRow?.dataset.code) {
+      switchToStock(row?.dataset.code || positionRow.dataset.code);
+    } else if (e.target.closest("#refresh-btn")) {
       showSectionLoading("index-cards");
       vscode.postMessage({ type: "refreshIndex" });
     } else if (e.target.closest("#refresh-industry-btn")) {

@@ -12,6 +12,11 @@ import {
   removeAlarmsByStock,
   clearAllAlarms,
 } from "./managers/alarmManager";
+import {
+  clearAllPositions,
+  managePositions,
+  removePositionsByStock,
+} from "./managers/positionManager";
 import { sendMsg } from "./utils/msg";
 import { config, getIsVisible } from "./config";
 import { refreshData } from "./refresher";
@@ -25,6 +30,7 @@ const COMMAND_MAP: Record<string, string> = {
   sort: "watch-stock.sortStocks",
   clear: "watch-stock.clearStocks",
   alarm: "watch-stock.priceAlarm",
+  positions: "watch-stock.managePositions",
   toggle: "watch-stock.toggleVisibility",
   refresh: "watch-stock.refreshData",
   manage: "watch-stock.manageStock",
@@ -48,12 +54,14 @@ export function registerCommands(
       const removed = await removeStock();
       if (removed) {
         await removeAlarmsByStock(removed);
+        await removePositionsByStock(removed);
         refresh();
       }
     }),
     vscode.commands.registerCommand(COMMAND_MAP.clear, async () => {
       if (await clearStocks()) {
         await clearAllAlarms();
+        await clearAllPositions();
         refresh();
       }
     }),
@@ -61,6 +69,9 @@ export function registerCommands(
       if (await sortStocks()) refresh();
     }),
     vscode.commands.registerCommand(COMMAND_MAP.alarm, () => manageAlarms()),
+    vscode.commands.registerCommand(COMMAND_MAP.positions, () =>
+      managePositions(),
+    ),
     vscode.commands.registerCommand(COMMAND_MAP.manage, () =>
       manageStock(appState),
     ),
@@ -129,6 +140,11 @@ async function manageStock(state: AppState): Promise<void> {
         label: "$(bell) 价格闹钟",
         description: "股票价格达到目标时提醒",
         action: "alarm",
+      },
+      {
+        label: "$(graph-line) 管理持仓",
+        description: "录入持仓数量和成本价",
+        action: "positions",
       },
     );
   }

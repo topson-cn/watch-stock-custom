@@ -13,7 +13,15 @@ import {
   INDUSTRY_CODES,
   INDUSTRY_CODE_LIST,
 } from "../config";
-import type { Stock, StockQuote, StockOverview, MinutePoint } from "../types";
+import { calculatePositionMetrics } from "../utils/position";
+import type {
+  Stock,
+  StockQuote,
+  StockOverview,
+  MinutePoint,
+  ClosedPosition,
+  PositionOverview,
+} from "../types";
 import stockHomeHtml from "../webview/stockHome.html";
 import stockOverviewHtml from "../webview/stockOverview.html";
 import stockDetailHtml from "../webview/stockDetail.html";
@@ -60,6 +68,8 @@ export class StockHomePanel {
   private panel: vscode.WebviewPanel;
   private disposables: vscode.Disposable[] = [];
   private stocks: StockOverview[] = [];
+  private positions: PositionOverview[] = [];
+  private closedPositions: ClosedPosition[] = [];
   private indexStocks: Stock[] = [];
   private industryStocks: IndustryItem[] = [];
   private activeCode: string | null = null;
@@ -180,6 +190,30 @@ export class StockHomePanel {
     };
   }
 
+  private buildPositionOverview(quotes: StockQuote[]): PositionOverview[] {
+    const quoteMap = new Map(quotes.map((q) => [q.code, q]));
+    return config
+      .getPositions()
+      .map((position) => {
+        const quote = quoteMap.get(position.stockCode);
+        if (!quote) return null;
+        const currentPrice = parseFloat(quote.current);
+        const metrics = calculatePositionMetrics({
+          shares: position.shares,
+          costPrice: position.costPrice,
+          currentPrice,
+        });
+        return {
+          ...position,
+          ...metrics,
+          name: quote.name,
+          currentPrice,
+          changePercent: quote.changePercent,
+        };
+      })
+      .filter((position): position is PositionOverview => position !== null);
+  }
+
   private async load(
     quotes: StockQuote[],
     indexData: Stock[],
@@ -190,6 +224,8 @@ export class StockHomePanel {
       this.quoteMap.set(q.code, q);
       return this.convertToStockInfo(q);
     });
+    this.positions = this.buildPositionOverview(quotes);
+    this.closedPositions = config.getClosedPositions();
     this.indexStocks = indexData || [];
     this.industryStocks = this.mapIndustryData(industryData);
 
@@ -205,6 +241,8 @@ export class StockHomePanel {
     this.panel.webview.postMessage({
       type: "init",
       stocks: this.stocks,
+      positions: this.positions,
+      closedPositions: this.closedPositions,
       indexStocks: this.indexStocks,
       industryStocks: this.industryStocks,
       activeCode: null,

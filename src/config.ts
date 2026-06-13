@@ -2,7 +2,13 @@
 import * as vscode from "vscode";
 import { isValidStockCode } from "./utils/stock";
 import { isTradingTime } from "./utils/time";
-import type { Alarm, IndustryConfig, AppState } from "./types";
+import type {
+  Alarm,
+  ClosedPosition,
+  IndustryConfig,
+  AppState,
+  Position,
+} from "./types";
 
 const SECTION = "watch-stock";
 
@@ -77,6 +83,8 @@ export interface ConfigShape {
   showChangeValue: boolean;
   autoHideByMarket: boolean;
   priceAlarms: Alarm[];
+  positions: Position[];
+  closedPositions: ClosedPosition[];
   enableLockTip: boolean;
   enableLargeTip: boolean;
   showLockCount: boolean;
@@ -91,6 +99,8 @@ const DEFAULTS: ConfigShape = {
   showChangeValue: false,
   autoHideByMarket: false,
   priceAlarms: [],
+  positions: [],
+  closedPositions: [],
   enableLockTip: false,
   enableLargeTip: false,
   showLockCount: false,
@@ -138,6 +148,50 @@ export const config = {
     await raw().update(
       "priceAlarms",
       alarms,
+      vscode.ConfigurationTarget.Global,
+    );
+  },
+  getPositions(): Position[] {
+    const positions = read("positions");
+    const valid = positions.filter(
+      (p) =>
+        isValidStockCode(p.stockCode) &&
+        Number.isFinite(p.shares) &&
+        p.shares > 0 &&
+        Number.isFinite(p.costPrice) &&
+        p.costPrice >= 0,
+    );
+    if (valid.length !== positions.length) {
+      raw().update("positions", valid, vscode.ConfigurationTarget.Global);
+    }
+    return valid;
+  },
+  async savePositions(positions: Position[]): Promise<void> {
+    await raw().update("positions", positions, vscode.ConfigurationTarget.Global);
+  },
+  getClosedPositions(): ClosedPosition[] {
+    const closedPositions = read("closedPositions");
+    const valid = closedPositions.filter(
+      (p) =>
+        isValidStockCode(p.stockCode) &&
+        Number.isFinite(p.shares) &&
+        p.shares > 0 &&
+        Number.isFinite(p.costPrice) &&
+        p.costPrice >= 0 &&
+        Number.isFinite(p.sellPrice) &&
+        p.sellPrice >= 0,
+    );
+    if (valid.length !== closedPositions.length) {
+      raw().update("closedPositions", valid, vscode.ConfigurationTarget.Global);
+    }
+    return valid;
+  },
+  async saveClosedPositions(
+    closedPositions: ClosedPosition[],
+  ): Promise<void> {
+    await raw().update(
+      "closedPositions",
+      closedPositions,
       vscode.ConfigurationTarget.Global,
     );
   },

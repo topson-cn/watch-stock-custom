@@ -4,6 +4,7 @@
 node_modules/
 src/
 versions/
+tests/
 package-lock.json
 tsconfig.json
 esbuild.config.mjs

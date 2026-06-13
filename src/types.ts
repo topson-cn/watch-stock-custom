@@ -94,6 +94,42 @@ export interface Alarm {
   condition: AlarmCondition;
 }
 
+export interface Position {
+  stockCode: string;
+  shares: number;
+  costPrice: number;
+}
+
+export interface PositionMetrics {
+  costAmount: number;
+  marketValue: number;
+  profit: number;
+  profitRate: number;
+}
+
+export interface ClosedPositionMetrics {
+  costAmount: number;
+  closeAmount: number;
+  realizedProfit: number;
+  realizedProfitRate: number;
+}
+
+export interface PositionOverview extends Position, PositionMetrics {
+  name: string;
+  currentPrice: number;
+  changePercent: string;
+}
+
+export interface ClosedPosition extends ClosedPositionMetrics {
+  id: string;
+  stockCode: string;
+  name: string;
+  shares: number;
+  costPrice: number;
+  sellPrice: number;
+  closedAt: string;
+}
+
 export interface LockInfo {
   priceType: PriceType;
   lockAmount: number;
