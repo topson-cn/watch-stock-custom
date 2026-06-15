@@ -11,6 +11,7 @@
   },
   "scripts": {
     "test:positions": "node --test tests/positionMetrics.test.mjs",
+    "test:signals": "node --test tests/tradingSignals.test.mjs",
     "typecheck": "tsc --noEmit",
     "build": "npm run typecheck && node esbuild.config.mjs && vsce package"
   },
@@ -59,6 +60,10 @@
       {
         "command": "watch-stock.refreshData",
         "title": "刷新行情数据"
+      },
+      {
+        "command": "watch-stock.checkTradingSignals",
+        "title": "检查交易信号"
       }
     ],
     "configuration": {

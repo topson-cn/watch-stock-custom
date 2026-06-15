@@ -98,6 +98,14 @@ export interface Position {
   stockCode: string;
   shares: number;
   costPrice: number;
+  buyDate?: string;
+  lots?: PositionLot[];
+}
+
+export interface PositionLot {
+  shares: number;
+  costPrice: number;
+  buyDate?: string;
 }
 
 export interface PositionMetrics {
