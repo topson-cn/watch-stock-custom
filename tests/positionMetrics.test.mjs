@@ -31,12 +31,15 @@ test("calculatePositionMetrics returns market value and profit", async () => {
     shares: 1000,
     costPrice: 25.3,
     currentPrice: 28.2,
+    previousClose: 27.6,
   });
 
   assert.equal(result.costAmount, 25300);
   assert.equal(result.marketValue, 28200);
   assert.equal(result.profit, 2900);
   assert.equal(result.profitRate, 0.1146);
+  assert.equal(result.todayProfit, 600);
+  assert.equal(result.todayProfitRate, 0.0217);
 });
 
 test("calculatePositionMetrics handles zero cost defensively", async () => {
@@ -46,12 +49,15 @@ test("calculatePositionMetrics handles zero cost defensively", async () => {
     shares: 500,
     costPrice: 0,
     currentPrice: 10,
+    previousClose: 8,
   });
 
   assert.equal(result.costAmount, 0);
   assert.equal(result.marketValue, 5000);
   assert.equal(result.profit, 5000);
   assert.equal(result.profitRate, 0);
+  assert.equal(result.todayProfit, 1000);
+  assert.equal(result.todayProfitRate, 0.25);
 });
 
 test("calculateClosedPositionMetrics returns realized profit", async () => {

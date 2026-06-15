@@ -196,38 +196,43 @@
       }
 
       /* ---- 切换概览/详情容器 ---- */
-      function showWatchlist() {
+      const overviewSectionIds = [
+        "watchlist-wrap",
+        "positions-wrap",
+        "closed-positions-wrap",
+        "market-overview-wrap",
+      ];
+
+      function showOverviewSection(sectionId) {
         overviewContainer.style.display = "";
         detailContainer.style.display = "none";
-        $("watchlist-wrap").style.display = "";
-        $("market-overview-wrap").style.display = "none";
+        for (const id of overviewSectionIds) {
+          const el = $(id);
+          if (el) el.style.display = id === sectionId ? "" : "none";
+        }
+      }
+
+      function showWatchlist() {
+        showOverviewSection("watchlist-wrap");
         renderWatchlistRows();
       }
       function showOverview() {
-        overviewContainer.style.display = "";
-        detailContainer.style.display = "none";
-        $("watchlist-wrap").style.display = "none";
-        $("market-overview-wrap").style.display = "";
+        showOverviewSection("market-overview-wrap");
         renderOverviewCards();
       }
       function showPositions() {
-        overviewContainer.style.display = "";
-        detailContainer.style.display = "none";
-        $("watchlist-wrap").style.display = "none";
-        $("positions-wrap").style.display = "";
-        $("market-overview-wrap").style.display = "none";
+        showOverviewSection("positions-wrap");
         renderPositionRows();
       }
       function showClosedPositions() {
-        overviewContainer.style.display = "";
-        detailContainer.style.display = "none";
-        $("watchlist-wrap").style.display = "none";
-        $("positions-wrap").style.display = "none";
-        $("closed-positions-wrap").style.display = "";
-        $("market-overview-wrap").style.display = "none";
+        showOverviewSection("closed-positions-wrap");
         renderClosedPositionRows();
       }
       function showDetail() {
+        for (const id of overviewSectionIds) {
+          const el = $(id);
+          if (el) el.style.display = "none";
+        }
         overviewContainer.style.display = "none";
         detailContainer.style.display = "flex";
       }

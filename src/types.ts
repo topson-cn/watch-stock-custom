@@ -105,6 +105,8 @@ export interface PositionMetrics {
   marketValue: number;
   profit: number;
   profitRate: number;
+  todayProfit: number;
+  todayProfitRate: number;
 }
 
 export interface ClosedPositionMetrics {

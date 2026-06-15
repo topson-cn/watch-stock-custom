@@ -139,7 +139,7 @@
   }
   .position-summary {
     display: grid;
-    grid-template-columns: repeat(4, 1fr);
+    grid-template-columns: repeat(5, 1fr);
     gap: 8px;
     margin-bottom: 8px;
   }
@@ -160,7 +160,7 @@
   .position-row,
   .position-head {
     display: grid;
-    grid-template-columns: minmax(150px, 1.3fr) 78px 86px 86px 96px 96px 86px;
+    grid-template-columns: minmax(150px, 1.3fr) 72px 82px 82px 90px 90px 90px 86px;
     align-items: center;
     gap: 12px;
   }
@@ -214,7 +214,7 @@
     }
     .position-row,
     .position-head {
-      grid-template-columns: minmax(140px, 1fr) 80px 86px 86px;
+      grid-template-columns: minmax(140px, 1fr) 72px 82px 86px;
     }
     .position-row .hide-mobile,
     .position-head .hide-mobile {
@@ -253,6 +253,7 @@
     <span class="num">数量</span>
     <span class="num hide-mobile">成本价</span>
     <span class="num">最新价</span>
+    <span class="num">今日</span>
     <span class="num hide-mobile">成本金额</span>
     <span class="num hide-mobile">市值</span>
     <span class="num">盈亏</span>
@@ -424,18 +425,21 @@
       (acc, p) => {
         acc.costAmount += Number(p.costAmount) || 0;
         acc.marketValue += Number(p.marketValue) || 0;
+        acc.todayProfit += Number(p.todayProfit) || 0;
         acc.profit += Number(p.profit) || 0;
         return acc;
       },
-      { costAmount: 0, marketValue: 0, profit: 0 },
+      { costAmount: 0, marketValue: 0, todayProfit: 0, profit: 0 },
     );
     const totalRate =
       totals.costAmount > 0 ? totals.profit / totals.costAmount : 0;
+    const todayCls = getProfitClass(totals.todayProfit);
     const totalCls = getProfitClass(totals.profit);
 
     summary.innerHTML = [
       ["总成本", fmtCurrency(totals.costAmount), ""],
       ["总市值", fmtCurrency(totals.marketValue), ""],
+      ["今日盈亏", fmtCurrency(totals.todayProfit), todayCls],
       ["预估收益", fmtCurrency(totals.profit), totalCls],
       ["收益率", fmtRate(totalRate), totalCls],
     ]
@@ -448,6 +452,7 @@
     rows.innerHTML = positions
       .map((p) => {
         const cls = getProfitClass(p.profit);
+        const todayCls = getProfitClass(p.todayProfit);
         return `<div class="position-row" data-code="${escHtml(p.stockCode)}">
           <div>
             <div class="watch-name">${escHtml(p.name)}</div>
@@ -459,6 +464,7 @@
           <div class="num">${escHtml(fmtShares(p.shares))}</div>
           <div class="num hide-mobile">${escHtml(fmtCurrency(p.costPrice))}</div>
           <div class="num">${escHtml(fmtCurrency(p.currentPrice))}</div>
+          <div class="num ${todayCls}">${escHtml(fmtCurrency(p.todayProfit))}<br /><span style="font-size: 11px">${escHtml(fmtRate(p.todayProfitRate))}</span></div>
           <div class="num hide-mobile">${escHtml(fmtCurrency(p.costAmount))}</div>
           <div class="num hide-mobile">${escHtml(fmtCurrency(p.marketValue))}</div>
           <div class="num ${cls}">${escHtml(fmtCurrency(p.profit))}<br /><span style="font-size: 11px">${escHtml(fmtRate(p.profitRate))}</span></div>

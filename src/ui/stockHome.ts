@@ -202,6 +202,7 @@ export class StockHomePanel {
           shares: position.shares,
           costPrice: position.costPrice,
           currentPrice,
+          previousClose: parseFloat(quote.close),
         });
         return {
           ...position,

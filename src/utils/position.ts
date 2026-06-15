@@ -4,6 +4,7 @@ interface PositionMetricInput {
   shares: number;
   costPrice: number;
   currentPrice: number;
+  previousClose: number;
 }
 
 interface ClosedPositionMetricInput {
@@ -28,16 +29,24 @@ export function calculatePositionMetrics(
   const currentPrice = Number.isFinite(input.currentPrice)
     ? input.currentPrice
     : 0;
+  const previousClose = Number.isFinite(input.previousClose)
+    ? input.previousClose
+    : 0;
   const costAmount = roundMoney(shares * costPrice);
   const marketValue = roundMoney(shares * currentPrice);
   const profit = roundMoney(marketValue - costAmount);
   const profitRate = costAmount > 0 ? roundRate(profit / costAmount) : 0;
+  const todayProfit = roundMoney((currentPrice - previousClose) * shares);
+  const todayProfitRate =
+    previousClose > 0 ? roundRate((currentPrice - previousClose) / previousClose) : 0;
 
   return {
     costAmount,
     marketValue,
     profit,
     profitRate,
+    todayProfit,
+    todayProfitRate,
   };
 }
 
