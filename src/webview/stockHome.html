@@ -124,6 +124,52 @@
       .gray {
         color: var(--c-axis);
       }
+
+      .detail-backdrop {
+        position: fixed;
+        inset: 0;
+        display: none;
+        align-items: center;
+        justify-content: center;
+        padding: 24px;
+        background: rgba(0, 0, 0, 0.42);
+        z-index: 20;
+      }
+
+      .detail-dialog {
+        width: min(920px, 100%);
+        max-height: min(720px, calc(100vh - 48px));
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        padding: 14px;
+        border: 1px solid var(--vscode-panel-border, #454545);
+        border-radius: 6px;
+        background: var(--vscode-editor-background);
+        box-shadow: 0 12px 32px rgba(0, 0, 0, 0.36);
+        overflow: auto;
+      }
+
+      .detail-dialog-bar {
+        display: flex;
+        justify-content: flex-end;
+      }
+
+      .detail-close {
+        width: 28px;
+        height: 28px;
+        border: 1px solid var(--vscode-panel-border, #454545);
+        border-radius: 3px;
+        background: none;
+        color: var(--vscode-editor-foreground);
+        cursor: pointer;
+        font-size: 18px;
+        line-height: 1;
+      }
+
+      .detail-close:hover {
+        background: var(--vscode-list-hoverBackground, #2a2d2e);
+      }
     </style>
   </head>
 
@@ -133,7 +179,13 @@
       <div class="content" id="content">
         <!-- 自选概览 / A股全览区域（由 stockOverview.html 注入） -->
         <div id="overview-container">{{OVERVIEW_HTML}}</div>
-        <!-- 个股详情区域（由 stockDetail.html 注入） -->
+      </div>
+    </div>
+    <div class="detail-backdrop" id="detail-backdrop">
+      <div class="detail-dialog" role="dialog" aria-modal="true">
+        <div class="detail-dialog-bar">
+          <button class="detail-close" id="detail-close" title="关闭">×</button>
+        </div>
         <div
           id="detail-container"
           style="display: none; flex-direction: column; gap: 10px"
@@ -155,7 +207,8 @@
       let closedPositions = [];
       let indexStocks = [];
       let industryStocks = [];
-      let activeCode = "__watchlist__"; // __watchlist__ 代表自选概览固定 tab
+      let activeTab = "__watchlist__";
+      let activeCode = null;
       const stocksMap = {};
       const quoteDataMap = {};
       let minuteData = null;
@@ -168,6 +221,8 @@
       const content = $("content");
       const overviewContainer = $("overview-container");
       const detailContainer = $("detail-container");
+      const detailBackdrop = $("detail-backdrop");
+      const detailClose = $("detail-close");
 
       /* ---- 通知 TS 端 webview 已就绪 ---- */
       vscode.postMessage({ type: "ready" });
@@ -205,7 +260,7 @@
 
       function showOverviewSection(sectionId) {
         overviewContainer.style.display = "";
-        detailContainer.style.display = "none";
+        closeDetail();
         for (const id of overviewSectionIds) {
           const el = $(id);
           if (el) el.style.display = id === sectionId ? "" : "none";
@@ -229,50 +284,56 @@
         renderClosedPositionRows();
       }
       function showDetail() {
-        for (const id of overviewSectionIds) {
-          const el = $(id);
-          if (el) el.style.display = "none";
-        }
-        overviewContainer.style.display = "none";
+        detailBackdrop.style.display = "flex";
         detailContainer.style.display = "flex";
       }
+
+      function closeDetail() {
+        detailBackdrop.style.display = "none";
+        detailContainer.style.display = "none";
+        activeCode = null;
+        minuteData = null;
+      }
+
+      detailClose.addEventListener("click", closeDetail);
+      detailBackdrop.addEventListener("click", (e) => {
+        if (e.target === detailBackdrop) closeDetail();
+      });
 
       /* ---- 渲染 Tab ---- */
       tabBar.addEventListener("click", (e) => {
         const tab = e.target.closest(".tab");
         if (!tab) return;
         const c = tab.dataset.code;
-        if (!c || c === activeCode) return;
+        if (!c || c === activeTab) return;
         if (c === "__watchlist__") {
-          activeCode = "__watchlist__";
+          activeTab = "__watchlist__";
           activeInfo = null;
           activeQuote = null;
           minuteData = null;
           renderTabs();
           showWatchlist();
         } else if (c === "__positions__") {
-          activeCode = "__positions__";
+          activeTab = "__positions__";
           activeInfo = null;
           activeQuote = null;
           minuteData = null;
           renderTabs();
           showPositions();
         } else if (c === "__closed_positions__") {
-          activeCode = "__closed_positions__";
+          activeTab = "__closed_positions__";
           activeInfo = null;
           activeQuote = null;
           minuteData = null;
           renderTabs();
           showClosedPositions();
         } else if (c === "__overview__") {
-          activeCode = "__overview__";
+          activeTab = "__overview__";
           activeInfo = null;
           activeQuote = null;
           minuteData = null;
           renderTabs();
           showOverview();
-        } else {
-          switchToStock(c);
         }
       });
 
@@ -281,7 +342,6 @@
         minuteData = null;
         activeInfo = stocksMap[code] || null;
         activeQuote = quoteDataMap[code] || null;
-        renderTabs();
         renderHeader();
         showDetail();
         vscode.postMessage({ type: "switchStock", code });
@@ -290,25 +350,17 @@
       function renderTabs() {
         // 固定首个自选概览 tab，第二个为持仓 tab，第三个为已清除 tab
         const watchlistActive =
-          activeCode === "__watchlist__" ? " active" : "";
+          activeTab === "__watchlist__" ? " active" : "";
         const positionsActive =
-          activeCode === "__positions__" ? " active" : "";
+          activeTab === "__positions__" ? " active" : "";
         const closedPositionsActive =
-          activeCode === "__closed_positions__" ? " active" : "";
-        const overviewActive = activeCode === "__overview__" ? " active" : "";
+          activeTab === "__closed_positions__" ? " active" : "";
+        const overviewActive = activeTab === "__overview__" ? " active" : "";
         const watchlistTab = `<div class="tab${watchlistActive}" data-code="__watchlist__"><span class="tab-name">自选</span></div>`;
         const positionsTab = `<div class="tab${positionsActive}" data-code="__positions__"><span class="tab-name">持仓</span></div>`;
         const closedPositionsTab = `<div class="tab${closedPositionsActive}" data-code="__closed_positions__"><span class="tab-name">已清除</span></div>`;
         const overviewTab = `<div class="tab${overviewActive}" data-code="__overview__"><span class="tab-name">A股全览</span></div>`;
-        const stockTabs = stocks
-          .map((s) => {
-            const active = s.code === activeCode ? " active" : "";
-            return `<div class="tab${active}" data-code="${s.code}">
-            <span class="tab-name">${escHtml(s.name)}</span>
-          </div>`;
-          })
-          .join("");
-        tabBar.innerHTML = watchlistTab + positionsTab + closedPositionsTab + overviewTab + stockTabs;
+        tabBar.innerHTML = watchlistTab + positionsTab + closedPositionsTab + overviewTab;
       }
 
       /* ---- 各片段 JS（由 stockOverview.html / stockDetail.html 的 <script> 提取注入） ---- */
@@ -324,7 +376,8 @@
             closedPositions = msg.closedPositions || [];
             indexStocks = msg.indexStocks || [];
             industryStocks = msg.industryStocks || [];
-            activeCode = "__watchlist__";
+            activeTab = "__watchlist__";
+            activeCode = null;
             // 清空旧数据避免状态污染
             Object.keys(stocksMap).forEach((k) => delete stocksMap[k]);
             Object.keys(quoteDataMap).forEach((k) => delete quoteDataMap[k]);
@@ -332,6 +385,7 @@
             for (const s of stocks) stocksMap[s.code] = s;
             activeInfo = null;
             activeQuote = null;
+            closeDetail();
             renderTabs();
             showWatchlist();
             break;

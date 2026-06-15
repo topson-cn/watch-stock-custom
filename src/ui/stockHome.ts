@@ -255,8 +255,17 @@ export class StockHomePanel {
     code: string,
     forceRefresh = false,
   ): Promise<void> {
-    const stockInfo = this.stocks.find((s) => s.code === code) || null;
-    const quoteInfo = this.quoteMap.get(code) || null;
+    let stockInfo = this.stocks.find((s) => s.code === code) || null;
+    let quoteInfo = this.quoteMap.get(code) || null;
+
+    if (!quoteInfo) {
+      const [quote] = await getStockQuoteList([code]);
+      if (quote) {
+        quoteInfo = quote;
+        stockInfo = this.convertToStockInfo(quote);
+        this.quoteMap.set(code, quote);
+      }
+    }
 
     const now = Date.now();
     const cached = this.minuteCache.get(code);

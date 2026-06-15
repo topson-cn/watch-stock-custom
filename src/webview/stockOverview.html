@@ -513,7 +513,7 @@
     rows.innerHTML = closedPositions
       .map((p) => {
         const cls = getProfitClass(p.realizedProfit);
-        return `<div class="closed-row">
+        return `<div class="closed-row" data-code="${escHtml(p.stockCode)}">
           <div>
             <div class="watch-name">${escHtml(p.name)}</div>
             <div class="watch-meta">
@@ -589,8 +589,15 @@
   overviewContainer.addEventListener("click", (e) => {
     const row = e.target.closest(".watch-row");
     const positionRow = e.target.closest(".position-row");
-    if (row?.dataset.code || positionRow?.dataset.code) {
-      switchToStock(row?.dataset.code || positionRow.dataset.code);
+    const closedRow = e.target.closest(".closed-row");
+    const overviewCard = e.target.closest(".ov-card");
+    const code =
+      row?.dataset.code ||
+      positionRow?.dataset.code ||
+      closedRow?.dataset.code ||
+      overviewCard?.dataset.code;
+    if (code) {
+      switchToStock(code);
     } else if (e.target.closest("#refresh-btn")) {
       showSectionLoading("index-cards");
       vscode.postMessage({ type: "refreshIndex" });
