@@ -4,6 +4,7 @@ import { getStockList } from "./services/stockService";
 import { calculateLockInfo, checkLockTip } from "./managers/lockManager";
 import { checkLargeTip } from "./managers/largeManager";
 import { checkAlarms } from "./managers/alarmManager";
+import { checkStrategyWatch } from "./managers/strategyWatchManager";
 import {
   isTradingTime,
   isMorningAuctionTime,
@@ -41,6 +42,7 @@ export async function refreshData(
     if (config.getEnableLockTip()) checkLockTip(stockInfos);
     if (config.getEnableLargeTip() && isStableTradeTime(now))
       checkLargeTip(stockInfos);
+    if (isStableTradeTime(now)) void checkStrategyWatch();
   }
 
   if (getIsVisible(state, now)) {

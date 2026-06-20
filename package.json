@@ -13,7 +13,9 @@
     "test:positions": "node --test tests/positionMetrics.test.mjs",
     "test:signals": "node --test tests/tradingSignals.test.mjs",
     "typecheck": "tsc --noEmit",
-    "build": "npm run typecheck && node esbuild.config.mjs && vsce package"
+    "build": "npm run typecheck && node esbuild.config.mjs && vsce package",
+    "test:strategy": "node --test tests/strategyWatch.test.mjs",
+    "test": "npm run test:positions && npm run test:signals && npm run test:strategy"
   },
   "categories": [
     "Other"
@@ -64,6 +66,10 @@
       {
         "command": "watch-stock.checkTradingSignals",
         "title": "检查交易信号"
+      },
+      {
+        "command": "watch-stock.checkStrategyWatch",
+        "title": "策略盯盘"
       }
     ],
     "configuration": {
@@ -107,7 +113,11 @@
                 "description": "持仓成本价"
               }
             },
-            "required": ["stockCode", "shares", "costPrice"]
+            "required": [
+              "stockCode",
+              "shares",
+              "costPrice"
+            ]
           }
         },
         "watch-stock.closedPositions": {

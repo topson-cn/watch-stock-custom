@@ -178,6 +178,35 @@ export interface BuildCandidate {
   risk: string;
 }
 
+export type StrategyWatchMode = "trade" | "trend" | "sentiment";
+
+export interface StrategyWatchTask {
+  id: string;
+  name: string;
+  priority: number;
+  mode: StrategyWatchMode;
+  description: string;
+  keywords: string[];
+  sectors: string[];
+  rules: string[];
+  riskNote: string;
+  notify: boolean;
+}
+
+export interface StrategyWatchHit {
+  taskId: string;
+  taskName: string;
+  mode: StrategyWatchMode;
+  action: string;
+  matched: string[];
+  candidate: BuildCandidate;
+}
+
+export interface StrategyWatchResult {
+  task: StrategyWatchTask;
+  hits: StrategyWatchHit[];
+}
+
 export interface LockInfo {
   priceType: PriceType;
   lockAmount: number;

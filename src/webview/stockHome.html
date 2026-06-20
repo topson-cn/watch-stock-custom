@@ -209,6 +209,8 @@
       let industryStocks = [];
       let candidates = [];
       let candidatesRefreshedAt = "";
+      let strategyWatchResults = [];
+      let strategyWatchRefreshedAt = "";
       let activeTab = "__watchlist__";
       let activeCode = null;
       const stocksMap = {};
@@ -258,6 +260,7 @@
         "positions-wrap",
         "closed-positions-wrap",
         "candidates-wrap",
+        "strategy-watch-wrap",
         "market-overview-wrap",
       ];
 
@@ -289,6 +292,10 @@
       function showCandidates() {
         showOverviewSection("candidates-wrap");
         renderCandidates();
+      }
+      function showStrategyWatch() {
+        showOverviewSection("strategy-watch-wrap");
+        renderStrategyWatch();
       }
       function showDetail() {
         detailBackdrop.style.display = "flex";
@@ -341,6 +348,13 @@
           minuteData = null;
           renderTabs();
           showCandidates();
+        } else if (c === "__strategy_watch__") {
+          activeTab = "__strategy_watch__";
+          activeInfo = null;
+          activeQuote = null;
+          minuteData = null;
+          renderTabs();
+          showStrategyWatch();
         } else if (c === "__overview__") {
           activeTab = "__overview__";
           activeInfo = null;
@@ -371,13 +385,16 @@
           activeTab === "__closed_positions__" ? " active" : "";
         const candidatesActive =
           activeTab === "__candidates__" ? " active" : "";
+        const strategyWatchActive =
+          activeTab === "__strategy_watch__" ? " active" : "";
         const overviewActive = activeTab === "__overview__" ? " active" : "";
         const watchlistTab = `<div class="tab${watchlistActive}" data-code="__watchlist__"><span class="tab-name">自选</span></div>`;
         const positionsTab = `<div class="tab${positionsActive}" data-code="__positions__"><span class="tab-name">持仓</span></div>`;
         const closedPositionsTab = `<div class="tab${closedPositionsActive}" data-code="__closed_positions__"><span class="tab-name">已清除</span></div>`;
         const candidatesTab = `<div class="tab${candidatesActive}" data-code="__candidates__"><span class="tab-name">建仓候选</span></div>`;
+        const strategyWatchTab = `<div class="tab${strategyWatchActive}" data-code="__strategy_watch__"><span class="tab-name">策略盯盘</span></div>`;
         const overviewTab = `<div class="tab${overviewActive}" data-code="__overview__"><span class="tab-name">A股全览</span></div>`;
-        tabBar.innerHTML = watchlistTab + positionsTab + closedPositionsTab + candidatesTab + overviewTab;
+        tabBar.innerHTML = watchlistTab + positionsTab + closedPositionsTab + candidatesTab + strategyWatchTab + overviewTab;
       }
 
       /* ---- 各片段 JS（由 stockOverview.html / stockDetail.html 的 <script> 提取注入） ---- */
@@ -395,6 +412,8 @@
             industryStocks = msg.industryStocks || [];
             candidates = msg.candidates || [];
             candidatesRefreshedAt = msg.candidatesRefreshedAt || "";
+            strategyWatchResults = msg.strategyWatchResults || [];
+            strategyWatchRefreshedAt = msg.strategyWatchRefreshedAt || "";
             activeTab = "__watchlist__";
             activeCode = null;
             // 清空旧数据避免状态污染
@@ -433,6 +452,11 @@
             candidates = msg.candidates || [];
             candidatesRefreshedAt = msg.refreshedAt || "";
             if (activeTab === "__candidates__") renderCandidates();
+            break;
+          case "strategyWatchData":
+            strategyWatchResults = msg.strategyWatchResults || [];
+            strategyWatchRefreshedAt = msg.refreshedAt || "";
+            if (activeTab === "__strategy_watch__") renderStrategyWatch();
             break;
         }
       });

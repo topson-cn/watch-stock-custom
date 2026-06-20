@@ -6,9 +6,9 @@ import {
   getStockMinute,
   getStockQuoteList,
   getStockList,
-  getDailyIndicator,
-  getMainBoardMarketQuoteList,
 } from "../services/stockService";
+import { scanBuildCandidates } from "../services/candidateScan";
+import { buildStrategyWatchResults } from "../utils/strategyWatch";
 import {
   config,
   INDEX_CODES,
@@ -16,7 +16,6 @@ import {
   INDUSTRY_CODE_LIST,
 } from "../config";
 import { calculatePositionMetrics } from "../utils/position";
-import { buildStockCandidate, isMainBoardStock } from "../utils/candidateSignal";
 import type {
   Stock,
   StockQuote,
@@ -25,6 +24,7 @@ import type {
   ClosedPosition,
   PositionOverview,
   BuildCandidate,
+  StrategyWatchResult,
 } from "../types";
 import stockHomeHtml from "../webview/stockHome.html";
 import stockOverviewHtml from "../webview/stockOverview.html";
@@ -34,7 +34,6 @@ import stockChartHtml from "../webview/stockChart.html";
 // 分时数据缓存有效期：10秒
 const MINUTE_CACHE_TTL = 10000;
 const CANDIDATE_REFRESH_MS = 3 * 60 * 1000;
-const CANDIDATE_DAILY_SCAN_LIMIT = 180;
 
 interface MinuteCacheEntry {
   data: MinutePoint[];
@@ -54,7 +53,8 @@ interface InboundMessage {
     | "refresh"
     | "refreshIndex"
     | "refreshIndustry"
-    | "refreshCandidates";
+    | "refreshCandidates"
+    | "refreshStrategyWatch";
   code?: string;
 }
 
@@ -80,6 +80,8 @@ export class StockHomePanel {
   private indexStocks: Stock[] = [];
   private industryStocks: IndustryItem[] = [];
   private candidates: BuildCandidate[] = [];
+  private strategyWatchResults: StrategyWatchResult[] = [];
+  private strategyWatchRefreshedAt = "";
   private candidateTimer: NodeJS.Timeout | null = null;
   private lastCandidateNotifyKey = "";
   private activeCode: string | null = null;
@@ -159,6 +161,9 @@ export class StockHomePanel {
       case "refreshCandidates":
         await this.refreshCandidates();
         break;
+      case "refreshStrategyWatch":
+        await this.refreshCandidates();
+        break;
     }
   }
 
@@ -205,65 +210,33 @@ export class StockHomePanel {
       second: "2-digit",
     });
     try {
-      const [marketQuotes, industryQuotes] = await Promise.all([
-        getMainBoardMarketQuoteList(),
-        getStockQuoteList(INDUSTRY_CODE_LIST),
-      ]);
-      const quoteMap = new Map(
-        [...marketQuotes, ...industryQuotes].map((quote) => [quote.code, quote]),
-      );
-      const positions = config.getPositions();
-      const positionCodes = new Set(positions.map((position) => position.stockCode));
-      const stockQuotes = marketQuotes
-        .filter((quote) => isMainBoardStock(quote.code))
-        .filter((quote) => !positionCodes.has(quote.code))
-        .filter((quote) => !quote.isETF && !/ST|退/.test(quote.name))
-        .filter((quote) => quote.amount >= 150000000)
-        .filter((quote) => {
-          const changePercent = Number(quote.changePercent);
-          return changePercent > -6 && changePercent < 7;
-        });
-      const dailyScanQuotes = [...stockQuotes]
-        .sort((a, b) => {
-          const aScore =
-            Math.log10(Math.max(a.amount, 1)) +
-            Number(a.volumeRatio) * 1.8 +
-            Math.max(Number(a.changePercent), 0);
-          const bScore =
-            Math.log10(Math.max(b.amount, 1)) +
-            Number(b.volumeRatio) * 1.8 +
-            Math.max(Number(b.changePercent), 0);
-          return bScore - aScore;
-        })
-        .slice(0, CANDIDATE_DAILY_SCAN_LIMIT);
-      const dailyEntries = await Promise.all(
-        dailyScanQuotes.map(async (quote) => [quote.code, await getDailyIndicator(quote.code)] as const),
-      );
-      const dailyMap = new Map(dailyEntries);
-      this.candidates = stockQuotes
-        .map((quote) =>
-          buildStockCandidate(
-            quote,
-            positions,
-            quoteMap,
-            dailyMap.get(quote.code) || null,
-          ),
-        )
-        .filter((item): item is BuildCandidate => item !== null)
-        .sort((a, b) => b.score - a.score)
-        .slice(0, 10);
+      this.candidates = await scanBuildCandidates(10);
+      this.strategyWatchResults = buildStrategyWatchResults(this.candidates);
+      this.strategyWatchRefreshedAt = refreshedAt;
       this.notifyCandidateChanges();
       this.panel.webview.postMessage({
         type: "candidateData",
         candidates: this.candidates,
         refreshedAt,
       });
+      this.panel.webview.postMessage({
+        type: "strategyWatchData",
+        strategyWatchResults: this.strategyWatchResults,
+        refreshedAt,
+      });
     } catch {
       this.candidates = [];
+      this.strategyWatchResults = buildStrategyWatchResults([]);
+      this.strategyWatchRefreshedAt = refreshedAt;
       this.lastCandidateNotifyKey = "";
       this.panel.webview.postMessage({
         type: "candidateData",
         candidates: [],
+        refreshedAt,
+      });
+      this.panel.webview.postMessage({
+        type: "strategyWatchData",
+        strategyWatchResults: this.strategyWatchResults,
         refreshedAt,
       });
     }
@@ -358,6 +331,8 @@ export class StockHomePanel {
       industryStocks: this.industryStocks,
       candidates: this.candidates,
       candidatesRefreshedAt: "",
+      strategyWatchResults: this.strategyWatchResults,
+      strategyWatchRefreshedAt: this.strategyWatchRefreshedAt,
       activeCode: null,
       quoteData: Object.fromEntries(this.quoteMap),
     });

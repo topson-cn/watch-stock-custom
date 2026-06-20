@@ -18,6 +18,7 @@ import {
   removePositionsByStock,
 } from "./managers/positionManager";
 import { checkTradingSignals } from "./managers/signalManager";
+import { checkStrategyWatch } from "./managers/strategyWatchManager";
 import { sendMsg } from "./utils/msg";
 import { config, getIsVisible } from "./config";
 import { refreshData } from "./refresher";
@@ -36,6 +37,7 @@ const COMMAND_MAP: Record<string, string> = {
   refresh: "watch-stock.refreshData",
   manage: "watch-stock.manageStock",
   signals: "watch-stock.checkTradingSignals",
+  strategyWatch: "watch-stock.checkStrategyWatch",
 };
 
 // 注册全部命令
@@ -91,6 +93,9 @@ export function registerCommands(
     }),
     vscode.commands.registerCommand(COMMAND_MAP.signals, () =>
       checkTradingSignals(),
+    ),
+    vscode.commands.registerCommand(COMMAND_MAP.strategyWatch, () =>
+      checkStrategyWatch(true),
     ),
     vscode.commands.registerCommand(COMMAND_MAP.home, async () => {
       const stocks = config.getStocks();
@@ -155,6 +160,11 @@ async function manageStock(state: AppState): Promise<void> {
         label: "$(pulse) 检查交易信号",
         description: "按持仓风控和强势异动规则检查自选股",
         action: "signals",
+      },
+      {
+        label: "$(telescope) 策略盯盘",
+        description: "按推荐方向池扫描全市场建仓候选",
+        action: "strategyWatch",
       },
     );
   }

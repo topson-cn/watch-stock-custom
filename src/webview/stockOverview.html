@@ -56,6 +56,23 @@
     font-size: 11px;
     line-height: 1.45;
   }
+  .strategy-task-card {
+    cursor: default;
+  }
+  .strategy-task-empty {
+    color: var(--vscode-descriptionForeground, #888);
+    font-size: 12px;
+    line-height: 1.5;
+  }
+  .strategy-hit {
+    border-top: 1px solid rgba(128, 128, 128, 0.14);
+    padding-top: 7px;
+    cursor: pointer;
+  }
+  .strategy-hit:first-of-type {
+    border-top: 0;
+    padding-top: 0;
+  }
   .ov-card-top {
     display: flex;
     align-items: center;
@@ -319,6 +336,17 @@
     </div>
   </div>
   <div class="overview-cards candidate-cards" id="candidate-cards"></div>
+</div>
+
+<div class="overview-wrap" id="strategy-watch-wrap" style="display: none">
+  <div class="overview-header">
+    <div class="overview-title">策略盯盘</div>
+    <div style="display: flex; align-items: center; gap: 8px">
+      <span id="strategy-watch-refresh-meta" class="gray" style="font-size: 12px"></span>
+      <button class="btn-refresh" id="strategy-watch-refresh-btn">↻ 刷新</button>
+    </div>
+  </div>
+  <div class="overview-cards candidate-cards" id="strategy-watch-cards"></div>
 </div>
 
 <div class="overview-wrap" id="market-overview-wrap" style="display: none">
@@ -661,6 +689,68 @@
       .join("");
   }
 
+  function renderStrategyWatch() {
+    const container = $("strategy-watch-cards");
+    const meta = $("strategy-watch-refresh-meta");
+    if (meta) meta.textContent = strategyWatchRefreshedAt ? `更新 ${strategyWatchRefreshedAt}` : "等待刷新";
+    if (!container) return;
+
+    const results = strategyWatchResults || [];
+    if (!results.length) {
+      container.innerHTML =
+        '<div style="grid-column: 1 / -1; padding: 24px 6px; color: var(--vscode-descriptionForeground, #888);">策略盯盘等待首次刷新。</div>';
+      return;
+    }
+
+    container.innerHTML = results
+      .map((result) => {
+        const task = result.task || {};
+        const hits = result.hits || [];
+        const modeText = task.mode === "sentiment" ? "情绪指标" : task.mode === "trend" ? "趋势确认" : "短线盯盘";
+        const notifyText = task.notify ? "有候选通知" : "仅观察";
+        const rules = (task.rules || [])
+          .map((rule) => `<span class="candidate-badge">${escHtml(rule)}</span>`)
+          .join("");
+        const hitHtml = hits.length
+          ? hits
+              .map((hit) => {
+                const item = hit.candidate || {};
+                const cls = item.changePercent > 0 ? "up" : item.changePercent < 0 ? "dn" : "gray";
+                const sign = item.changePercent > 0 ? "+" : "";
+                const matched = (hit.matched || []).join(" / ");
+                return `<div class="strategy-hit" data-code="${escHtml(item.code || "")}">
+                  <div class="ov-card-top">
+                    <span class="ov-name">${escHtml(item.name || "-")}</span>
+                    <span class="ov-code">${escHtml(String(item.code || "").toUpperCase())}</span>
+                  </div>
+                  <div class="ov-card-top">
+                    <span class="${cls}">${escHtml(hit.action || "")} · ${escHtml(item.title || "")}</span>
+                    <span class="${cls}">${sign}${escHtml(Number(item.changePercent || 0).toFixed(2))}%</span>
+                  </div>
+                  <div class="candidate-risk">匹配：${escHtml(matched)}；评分 ${escHtml(String(Math.round(item.score || 0)))}。</div>
+                </div>`;
+              })
+              .join("")
+          : '<div class="strategy-task-empty">当前没有模式内候选，继续等待方向和图形共振。</div>';
+
+        return `<div class="ov-card candidate-card strategy-task-card">
+          <div class="ov-card-top">
+            <span class="ov-name">${escHtml(task.name || "-")}</span>
+            <span class="ov-code">#${escHtml(String(task.priority || "-"))}</span>
+          </div>
+          <div class="candidate-risk">${escHtml(task.description || "")}</div>
+          <div class="candidate-badges">
+            <span class="candidate-badge">${escHtml(modeText)}</span>
+            <span class="candidate-badge">${escHtml(notifyText)}</span>
+            ${rules}
+          </div>
+          <div class="candidate-risk">${escHtml(task.riskNote || "")}</div>
+          ${hitHtml}
+        </div>`;
+      })
+      .join("");
+  }
+
   function showSectionLoading(elementId) {
     const el = $(elementId);
     if (el) {
@@ -673,8 +763,10 @@
     const row = e.target.closest(".watch-row");
     const positionRow = e.target.closest(".position-row");
     const closedRow = e.target.closest(".closed-row");
+    const strategyHit = e.target.closest(".strategy-hit");
     const overviewCard = e.target.closest(".ov-card");
     const code =
+      strategyHit?.dataset.code ||
       row?.dataset.code ||
       positionRow?.dataset.code ||
       closedRow?.dataset.code ||
@@ -690,6 +782,9 @@
     } else if (e.target.closest("#candidate-refresh-btn")) {
       showSectionLoading("candidate-cards");
       vscode.postMessage({ type: "refreshCandidates" });
+    } else if (e.target.closest("#strategy-watch-refresh-btn")) {
+      showSectionLoading("strategy-watch-cards");
+      vscode.postMessage({ type: "refreshStrategyWatch" });
     }
   });
 </script>
