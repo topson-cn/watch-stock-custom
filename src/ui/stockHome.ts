@@ -6,6 +6,8 @@ import {
   getStockMinute,
   getStockQuoteList,
   getStockList,
+  getDailyIndicator,
+  getMainBoardMarketQuoteList,
 } from "../services/stockService";
 import {
   config,
@@ -14,6 +16,7 @@ import {
   INDUSTRY_CODE_LIST,
 } from "../config";
 import { calculatePositionMetrics } from "../utils/position";
+import { buildStockCandidate, isMainBoardStock } from "../utils/candidateSignal";
 import type {
   Stock,
   StockQuote,
@@ -21,6 +24,7 @@ import type {
   MinutePoint,
   ClosedPosition,
   PositionOverview,
+  BuildCandidate,
 } from "../types";
 import stockHomeHtml from "../webview/stockHome.html";
 import stockOverviewHtml from "../webview/stockOverview.html";
@@ -29,6 +33,8 @@ import stockChartHtml from "../webview/stockChart.html";
 
 // 分时数据缓存有效期：10秒
 const MINUTE_CACHE_TTL = 10000;
+const CANDIDATE_REFRESH_MS = 3 * 60 * 1000;
+const CANDIDATE_DAILY_SCAN_LIMIT = 180;
 
 interface MinuteCacheEntry {
   data: MinutePoint[];
@@ -47,7 +53,8 @@ interface InboundMessage {
     | "switchStock"
     | "refresh"
     | "refreshIndex"
-    | "refreshIndustry";
+    | "refreshIndustry"
+    | "refreshCandidates";
   code?: string;
 }
 
@@ -72,6 +79,9 @@ export class StockHomePanel {
   private closedPositions: ClosedPosition[] = [];
   private indexStocks: Stock[] = [];
   private industryStocks: IndustryItem[] = [];
+  private candidates: BuildCandidate[] = [];
+  private candidateTimer: NodeJS.Timeout | null = null;
+  private lastCandidateNotifyKey = "";
   private activeCode: string | null = null;
   private quoteMap = new Map<string, StockQuote>();
   private minuteCache = new Map<string, MinuteCacheEntry>();
@@ -146,6 +156,9 @@ export class StockHomePanel {
       case "refreshIndustry":
         await this.refreshIndustryData();
         break;
+      case "refreshCandidates":
+        await this.refreshCandidates();
+        break;
     }
   }
 
@@ -174,6 +187,103 @@ export class StockHomePanel {
     this.panel.webview.postMessage({
       type: "industryData",
       industryStocks: this.industryStocks,
+    });
+  }
+
+  private startCandidateTimer(): void {
+    if (this.candidateTimer) clearInterval(this.candidateTimer);
+    this.candidateTimer = setInterval(() => {
+      void this.refreshCandidates();
+    }, CANDIDATE_REFRESH_MS);
+  }
+
+  private async refreshCandidates(): Promise<void> {
+    const refreshedAt = new Date().toLocaleTimeString("zh-CN", {
+      hour12: false,
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
+    });
+    try {
+      const [marketQuotes, industryQuotes] = await Promise.all([
+        getMainBoardMarketQuoteList(),
+        getStockQuoteList(INDUSTRY_CODE_LIST),
+      ]);
+      const quoteMap = new Map(
+        [...marketQuotes, ...industryQuotes].map((quote) => [quote.code, quote]),
+      );
+      const positions = config.getPositions();
+      const positionCodes = new Set(positions.map((position) => position.stockCode));
+      const stockQuotes = marketQuotes
+        .filter((quote) => isMainBoardStock(quote.code))
+        .filter((quote) => !positionCodes.has(quote.code))
+        .filter((quote) => !quote.isETF && !/ST|退/.test(quote.name))
+        .filter((quote) => quote.amount >= 150000000)
+        .filter((quote) => {
+          const changePercent = Number(quote.changePercent);
+          return changePercent > -6 && changePercent < 7;
+        });
+      const dailyScanQuotes = [...stockQuotes]
+        .sort((a, b) => {
+          const aScore =
+            Math.log10(Math.max(a.amount, 1)) +
+            Number(a.volumeRatio) * 1.8 +
+            Math.max(Number(a.changePercent), 0);
+          const bScore =
+            Math.log10(Math.max(b.amount, 1)) +
+            Number(b.volumeRatio) * 1.8 +
+            Math.max(Number(b.changePercent), 0);
+          return bScore - aScore;
+        })
+        .slice(0, CANDIDATE_DAILY_SCAN_LIMIT);
+      const dailyEntries = await Promise.all(
+        dailyScanQuotes.map(async (quote) => [quote.code, await getDailyIndicator(quote.code)] as const),
+      );
+      const dailyMap = new Map(dailyEntries);
+      this.candidates = stockQuotes
+        .map((quote) =>
+          buildStockCandidate(
+            quote,
+            positions,
+            quoteMap,
+            dailyMap.get(quote.code) || null,
+          ),
+        )
+        .filter((item): item is BuildCandidate => item !== null)
+        .sort((a, b) => b.score - a.score)
+        .slice(0, 10);
+      this.notifyCandidateChanges();
+      this.panel.webview.postMessage({
+        type: "candidateData",
+        candidates: this.candidates,
+        refreshedAt,
+      });
+    } catch {
+      this.candidates = [];
+      this.lastCandidateNotifyKey = "";
+      this.panel.webview.postMessage({
+        type: "candidateData",
+        candidates: [],
+        refreshedAt,
+      });
+    }
+  }
+
+  private notifyCandidateChanges(): void {
+    const notifyKey = this.candidates.map((item) => item.code).join("|");
+    if (!notifyKey) {
+      this.lastCandidateNotifyKey = "";
+      return;
+    }
+    if (notifyKey === this.lastCandidateNotifyKey) return;
+
+    this.lastCandidateNotifyKey = notifyKey;
+    const top = this.candidates
+      .slice(0, 3)
+      .map((item) => `${item.name}(${item.title})`)
+      .join("、");
+    sendMsg(`发现${this.candidates.length}个建仓候选：${top}`, {
+      type: "info",
     });
   }
 
@@ -246,9 +356,13 @@ export class StockHomePanel {
       closedPositions: this.closedPositions,
       indexStocks: this.indexStocks,
       industryStocks: this.industryStocks,
+      candidates: this.candidates,
+      candidatesRefreshedAt: "",
       activeCode: null,
       quoteData: Object.fromEntries(this.quoteMap),
     });
+    await this.refreshCandidates();
+    this.startCandidateTimer();
   }
 
   private async fetchAndSend(
@@ -312,6 +426,10 @@ export class StockHomePanel {
   }
 
   private dispose(): void {
+    if (this.candidateTimer) {
+      clearInterval(this.candidateTimer);
+      this.candidateTimer = null;
+    }
     StockHomePanel.current = null;
     this.panel.dispose();
     for (const d of this.disposables) d.dispose();

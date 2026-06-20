@@ -2,7 +2,7 @@
 import { get, getGbk } from "../utils/http";
 import { buildTimeSlots } from "../utils/time";
 import { isFund, getDecimals, safeNumber } from "../utils/stock";
-import type { Stock, StockQuote, MinutePoint } from "../types";
+import type { Stock, StockQuote, MinutePoint, DailyBar, DailyIndicator } from "../types";
 
 // 解析新浪源单条数据
 function parseSinaStockData(code: string, data: string): Stock | null {
@@ -195,6 +195,217 @@ export async function getStockMinute(code: string): Promise<MinutePoint[]> {
       (time) =>
         dataMap.get(time) ?? { time, price: null, volume: null, amount: null },
     );
+  } catch {
+    return [];
+  }
+}
+
+
+interface EastmoneyMarketItem {
+  f2?: number;
+  f3?: number;
+  f4?: number;
+  f5?: number;
+  f6?: number;
+  f8?: number;
+  f10?: number;
+  f12?: string;
+  f13?: number;
+  f14?: string;
+  f15?: number;
+  f16?: number;
+  f17?: number;
+  f18?: number;
+  f20?: number;
+  f21?: number;
+  f23?: number;
+}
+
+interface EastmoneyMarketResponse {
+  data?: {
+    diff?: EastmoneyMarketItem[];
+  };
+}
+
+interface EastmoneyKlineResponse {
+  data?: {
+    klines?: string[];
+  };
+}
+
+function parseEastmoneyMarketQuote(item: EastmoneyMarketItem): StockQuote | null {
+  const rawCode = item.f12 || "";
+  const market = item.f13;
+  const code = market === 1 ? `sh${rawCode}` : market === 0 ? `sz${rawCode}` : "";
+  const current = safeNumber(item.f2);
+  const close = safeNumber(item.f18);
+  const name = item.f14 || "";
+  if (!code || !name || current <= 0 || close <= 0) return null;
+  const isETF = isFund(code, name, current);
+  const dec = getDecimals(isETF);
+  const changeValue = safeNumber(item.f4);
+  const changePercent = safeNumber(item.f3);
+
+  return {
+    name,
+    code,
+    current: current.toFixed(dec),
+    close: close.toFixed(dec),
+    open: safeNumber(item.f17).toFixed(dec),
+    volume: safeNumber(item.f5),
+    changeValue: changeValue.toFixed(dec),
+    changePercent: changePercent.toFixed(2),
+    high: safeNumber(item.f15).toFixed(dec),
+    low: safeNumber(item.f16).toFixed(dec),
+    amount: safeNumber(item.f6),
+    turnoverRatio: safeNumber(item.f8).toFixed(2),
+    pe: safeNumber(item.f23),
+    circulationMarket: safeNumber(item.f21),
+    totalMarket: safeNumber(item.f20),
+    pb: 0,
+    volumeRatio: safeNumber(item.f10).toFixed(2),
+    avgPrice: current.toFixed(dec),
+    circulatingShares: 0,
+    totalShares: 0,
+    isETF,
+    dateTime: "",
+  };
+}
+
+function getEastmoneySecid(code: string): string | null {
+  if (code.startsWith("sh")) return `1.${code.slice(2)}`;
+  if (code.startsWith("sz")) return `0.${code.slice(2)}`;
+  return null;
+}
+
+function avg(values: number[]): number {
+  const nums = values.filter((v) => Number.isFinite(v));
+  if (!nums.length) return 0;
+  return nums.reduce((sum, v) => sum + v, 0) / nums.length;
+}
+
+function ema(value: number, period: number, previous: number | null): number {
+  if (previous === null) return value;
+  const k = 2 / (period + 1);
+  return value * k + previous * (1 - k);
+}
+
+function parseDailyBar(raw: string): DailyBar | null {
+  const parts = raw.split(",");
+  if (parts.length < 11) return null;
+  const bar: DailyBar = {
+    date: parts[0] || "",
+    open: safeNumber(parts[1]),
+    close: safeNumber(parts[2]),
+    high: safeNumber(parts[3]),
+    low: safeNumber(parts[4]),
+    volume: safeNumber(parts[5]),
+    amount: safeNumber(parts[6]),
+    changePercent: safeNumber(parts[8]),
+    turnoverRatio: safeNumber(parts[10]),
+  };
+  return bar.date && bar.close > 0 ? bar : null;
+}
+
+function buildDailyIndicator(bars: DailyBar[]): DailyIndicator | null {
+  if (bars.length < 70) return null;
+  const last = bars[bars.length - 1];
+  const prev = bars[bars.length - 2];
+  if (!last || !prev) return null;
+
+  const closes = bars.map((bar) => bar.close);
+  const amounts = bars.map((bar) => bar.amount);
+  const ma60 = avg(closes.slice(-60));
+  const prevMa60 = avg(closes.slice(-61, -1));
+  const amount5 = avg(amounts.slice(-6, -1));
+
+  let ema12: number | null = null;
+  let ema26: number | null = null;
+  let dea: number | null = null;
+  const macd = closes.map((close) => {
+    ema12 = ema(close, 12, ema12);
+    ema26 = ema(close, 26, ema26);
+    const dif = ema12 - ema26;
+    dea = ema(dif, 9, dea);
+    return { dif, dea };
+  });
+  const lastMacd = macd[macd.length - 1];
+  const prevMacd = macd[macd.length - 2];
+  const recentGold = macd
+    .slice(Math.max(1, macd.length - 22), macd.length - 2)
+    .some((item, index, list) => {
+      const before = index === 0 ? macd[macd.length - 23] : list[index - 1];
+      return !!before && item.dif > item.dea && before.dif <= before.dea;
+    });
+
+  return {
+    last,
+    prev,
+    ma60,
+    prevMa60,
+    amount5,
+    macdGoldZero:
+      !!lastMacd &&
+      !!prevMacd &&
+      lastMacd.dif > lastMacd.dea &&
+      prevMacd.dif <= prevMacd.dea &&
+      lastMacd.dif > 0 &&
+      lastMacd.dea > 0 &&
+      !recentGold,
+  };
+}
+
+export async function getDailyIndicator(
+  code: string,
+): Promise<DailyIndicator | null> {
+  const secid = getEastmoneySecid(code);
+  if (!secid) return null;
+  try {
+    const url =
+      "https://push2his.eastmoney.com/api/qt/stock/kline/get" +
+      `?secid=${secid}&fields1=f1,f2,f3,f4,f5,f6&fields2=f51,f52,f53,f54,f55,f56,f57,f58,f59,f60,f61&klt=101&fqt=1&end=20500101&lmt=140`;
+    const text = await get(url);
+    const res = JSON.parse(text) as EastmoneyKlineResponse;
+    const bars = (res.data?.klines || [])
+      .map(parseDailyBar)
+      .filter((bar): bar is DailyBar => bar !== null);
+    return buildDailyIndicator(bars);
+  } catch {
+    return null;
+  }
+}
+
+
+// 获取沪深主板全市场行情（排除科创板、创业板、北交所，供建仓候选池使用）
+export async function getMainBoardMarketQuoteList(): Promise<StockQuote[]> {
+  try {
+    const fields = [
+      "f2",
+      "f3",
+      "f4",
+      "f5",
+      "f6",
+      "f8",
+      "f10",
+      "f12",
+      "f13",
+      "f14",
+      "f15",
+      "f16",
+      "f17",
+      "f18",
+      "f20",
+      "f21",
+      "f23",
+    ].join(",");
+    const url =
+      "https://push2.eastmoney.com/api/qt/clist/get" +
+      `?pn=1&pz=5000&po=1&np=1&ut=bd1d9ddb04089700cf9c27f6f7426281&fltt=2&invt=2&fid=f6&fs=m:1+t:2,m:0+t:6&fields=${fields}`;
+    const text = await get(url);
+    const res = JSON.parse(text) as EastmoneyMarketResponse;
+    return (res.data?.diff || [])
+      .map(parseEastmoneyMarketQuote)
+      .filter((quote): quote is StockQuote => quote !== null);
   } catch {
     return [];
   }

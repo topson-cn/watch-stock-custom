@@ -140,6 +140,44 @@ export interface ClosedPosition extends ClosedPositionMetrics {
   closedAt: string;
 }
 
+export interface DailyBar {
+  date: string;
+  open: number;
+  close: number;
+  high: number;
+  low: number;
+  volume: number;
+  amount: number;
+  changePercent: number;
+  turnoverRatio: number;
+}
+
+export interface DailyIndicator {
+  last: DailyBar;
+  prev: DailyBar;
+  ma60: number;
+  prevMa60: number;
+  amount5: number;
+  macdGoldZero: boolean;
+}
+
+export interface BuildCandidate {
+  code: string;
+  name: string;
+  current: number;
+  changePercent: number;
+  amount: number;
+  volumeRatio: number;
+  turnoverRatio: number;
+  sectorName: string;
+  sectorChangePercent: number;
+  score: number;
+  tier: string;
+  title: string;
+  reasons: string[];
+  risk: string;
+}
+
 export interface LockInfo {
   priceType: PriceType;
   lockAmount: number;

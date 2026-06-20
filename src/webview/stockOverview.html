@@ -24,6 +24,38 @@
     border: 1px solid var(--vscode-panel-border, #454545);
     border-radius: 3px;
   }
+  .candidate-cards {
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  }
+  .candidate-card {
+    gap: 8px;
+    cursor: pointer;
+  }
+  .candidate-card:hover {
+    background: var(--vscode-list-hoverBackground, rgba(128, 128, 128, 0.08));
+  }
+  .candidate-badges {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px;
+  }
+  .candidate-badge {
+    padding: 2px 6px;
+    border: 1px solid var(--vscode-panel-border, #454545);
+    border-radius: 3px;
+    color: var(--vscode-descriptionForeground, #888);
+    font-size: 11px;
+  }
+  .candidate-reason {
+    color: var(--vscode-editor-foreground);
+    font-size: 12px;
+    line-height: 1.45;
+  }
+  .candidate-risk {
+    color: var(--vscode-descriptionForeground, #888);
+    font-size: 11px;
+    line-height: 1.45;
+  }
   .ov-card-top {
     display: flex;
     align-items: center;
@@ -276,6 +308,17 @@
     <span class="num">清除时间</span>
   </div>
   <div id="closed-position-rows"></div>
+</div>
+
+<div class="overview-wrap" id="candidates-wrap" style="display: none">
+  <div class="overview-header">
+    <div class="overview-title">建仓候选</div>
+    <div style="display: flex; align-items: center; gap: 8px">
+      <span id="candidate-refresh-meta" class="gray" style="font-size: 12px"></span>
+      <button class="btn-refresh" id="candidate-refresh-btn">↻ 刷新</button>
+    </div>
+  </div>
+  <div class="overview-cards candidate-cards" id="candidate-cards"></div>
 </div>
 
 <div class="overview-wrap" id="market-overview-wrap" style="display: none">
@@ -578,6 +621,46 @@
     });
   }
 
+  function renderCandidates() {
+    const container = $("candidate-cards");
+    const meta = $("candidate-refresh-meta");
+    if (meta) meta.textContent = candidatesRefreshedAt ? `更新 ${candidatesRefreshedAt}` : "等待刷新";
+    if (!container) return;
+    if (!candidates?.length) {
+      container.innerHTML =
+        '<div style="grid-column: 1 / -1; padding: 24px 6px; color: var(--vscode-descriptionForeground, #888);">当前沪深主板全市场没有满足三类预警的建仓候选。</div>';
+      return;
+    }
+
+    container.innerHTML = candidates
+      .map((item) => {
+        const cls = item.changePercent > 0 ? "up" : item.changePercent < 0 ? "dn" : "gray";
+        const sign = item.changePercent > 0 ? "+" : "";
+        const reasons = (item.reasons || [])
+          .map((reason) => `<div class="candidate-reason">• ${escHtml(reason)}</div>`)
+          .join("");
+        return `<div class="ov-card candidate-card" data-code="${escHtml(item.code)}">
+          <div class="ov-card-top">
+            <span class="ov-name">${escHtml(item.name)}</span>
+            <span class="ov-code">${escHtml(item.code).toUpperCase()}</span>
+          </div>
+          <div class="ov-card-top">
+            <span class="ov-price ${cls}">${escHtml(Number(item.current).toFixed(2))}</span>
+            <span class="ov-chg ${cls}">${sign}${escHtml(Number(item.changePercent).toFixed(2))}%</span>
+          </div>
+          <div class="candidate-badges">
+            <span class="candidate-badge">${escHtml(item.tier)}</span>
+            <span class="candidate-badge">${escHtml(item.title)}</span>
+            <span class="candidate-badge">评分 ${escHtml(String(Math.round(item.score)))}</span>
+            <span class="candidate-badge">${escHtml(item.sectorName)} ${item.sectorChangePercent > 0 ? "+" : ""}${escHtml(Number(item.sectorChangePercent).toFixed(2))}%</span>
+          </div>
+          ${reasons}
+          <div class="candidate-risk">${escHtml(item.risk || "")}</div>
+        </div>`;
+      })
+      .join("");
+  }
+
   function showSectionLoading(elementId) {
     const el = $(elementId);
     if (el) {
@@ -604,6 +687,9 @@
     } else if (e.target.closest("#refresh-industry-btn")) {
       showSectionLoading("industry-cards");
       vscode.postMessage({ type: "refreshIndustry" });
+    } else if (e.target.closest("#candidate-refresh-btn")) {
+      showSectionLoading("candidate-cards");
+      vscode.postMessage({ type: "refreshCandidates" });
     }
   });
 </script>
