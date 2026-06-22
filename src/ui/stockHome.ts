@@ -210,8 +210,9 @@ export class StockHomePanel {
       second: "2-digit",
     });
     try {
-      this.candidates = await scanBuildCandidates(10);
-      this.strategyWatchResults = buildStrategyWatchResults(this.candidates);
+      const strategyCandidates = await scanBuildCandidates(80);
+      this.candidates = strategyCandidates.slice(0, 10);
+      this.strategyWatchResults = buildStrategyWatchResults(strategyCandidates);
       this.strategyWatchRefreshedAt = refreshedAt;
       this.notifyCandidateChanges();
       this.panel.webview.postMessage({

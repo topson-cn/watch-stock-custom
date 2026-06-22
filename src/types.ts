@@ -207,6 +207,28 @@ export interface StrategyWatchResult {
   hits: StrategyWatchHit[];
 }
 
+export interface StrategyHitSnapshot {
+  minutes: number;
+  price: number;
+  profitRate: number;
+  capturedAt: string;
+}
+
+export interface StrategyHitRecord {
+  id: string;
+  tradeDate: string;
+  taskName: string;
+  code: string;
+  name: string;
+  title: string;
+  triggerAt: string;
+  triggerPrice: number;
+  latestAt: string;
+  latestPrice: number;
+  latestProfitRate: number;
+  snapshots: StrategyHitSnapshot[];
+}
+
 export interface LockInfo {
   priceType: PriceType;
   lockAmount: number;

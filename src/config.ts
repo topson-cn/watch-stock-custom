@@ -8,6 +8,7 @@ import type {
   IndustryConfig,
   AppState,
   Position,
+  StrategyHitRecord,
 } from "./types";
 
 const SECTION = "watch-stock";
@@ -85,6 +86,7 @@ export interface ConfigShape {
   priceAlarms: Alarm[];
   positions: Position[];
   closedPositions: ClosedPosition[];
+  strategyHitRecords: StrategyHitRecord[];
   enableLockTip: boolean;
   enableLargeTip: boolean;
   showLockCount: boolean;
@@ -101,6 +103,7 @@ const DEFAULTS: ConfigShape = {
   priceAlarms: [],
   positions: [],
   closedPositions: [],
+  strategyHitRecords: [],
   enableLockTip: false,
   enableLargeTip: false,
   showLockCount: false,
@@ -168,6 +171,10 @@ export const config = {
   },
   async savePositions(positions: Position[]): Promise<void> {
     await raw().update("positions", positions, vscode.ConfigurationTarget.Global);
+  },
+  getStrategyHitRecords: () => read("strategyHitRecords"),
+  async saveStrategyHitRecords(records: StrategyHitRecord[]): Promise<void> {
+    await raw().update("strategyHitRecords", records, vscode.ConfigurationTarget.Global);
   },
   getClosedPositions(): ClosedPosition[] {
     const closedPositions = read("closedPositions");

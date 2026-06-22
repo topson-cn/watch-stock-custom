@@ -175,6 +175,14 @@
           "type": "boolean",
           "default": false,
           "description": "是否开启彩色视图"
+        },
+        "watch-stock.strategyHitRecords": {
+          "type": "array",
+          "default": [],
+          "description": "策略盯盘命中回溯记录，包含触发价、最新价和5/15/30分钟收益快照",
+          "items": {
+            "type": "object"
+          }
         }
       }
     },
