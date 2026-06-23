@@ -4,6 +4,10 @@ import { registerCommands } from "./commands";
 import { startRefreshTimer, stopRefreshTimer } from "./refresher";
 import { StatusBarManager } from "./ui/statusBar";
 import { disposeRateLimit } from "./utils/msg";
+import {
+  startStrategyWatchTimer,
+  stopStrategyWatchTimer,
+} from "./managers/strategyWatchManager";
 import type { AppState } from "./types";
 
 // 应用状态
@@ -18,11 +22,13 @@ export function activate(context: vscode.ExtensionContext): void {
   appState.statusBar.initialize();
   registerCommands(context, appState);
   startRefreshTimer(appState);
+  startStrategyWatchTimer();
 }
 
 export function deactivate(): void {
   if (appState) {
     stopRefreshTimer(appState);
+    stopStrategyWatchTimer();
     appState.statusBar.dispose();
   }
   disposeRateLimit();

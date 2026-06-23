@@ -5,6 +5,7 @@ import {
 } from "../utils/strategyWatch";
 import { sendMsg } from "../utils/msg";
 import { config } from "../config";
+import { isStableTradeTime, isTradingTime } from "../utils/time";
 import type { StrategyWatchResult } from "../types";
 
 const STRATEGY_REFRESH_MS = 3 * 60 * 1000;
@@ -13,6 +14,7 @@ const MAX_HIT_RECORDS = 160;
 
 let lastRunAt = 0;
 let lastNotifyKey = "";
+let strategyWatchTimer: NodeJS.Timeout | null = null;
 
 function tradeDate(now: Date): string {
   return now.toISOString().slice(0, 10);
@@ -96,6 +98,27 @@ function flattenNotifyHits(results: StrategyWatchResult[]) {
         : [];
     })
     .sort((a, b) => a.taskPriority - b.taskPriority || b.score - a.score);
+}
+
+function runScheduledStrategyWatch(): void {
+  const now = new Date();
+  if (!isTradingTime(now) || !isStableTradeTime(now)) return;
+  void checkStrategyWatch();
+}
+
+export function startStrategyWatchTimer(): void {
+  if (strategyWatchTimer) clearInterval(strategyWatchTimer);
+  runScheduledStrategyWatch();
+  strategyWatchTimer = setInterval(
+    runScheduledStrategyWatch,
+    STRATEGY_REFRESH_MS,
+  );
+}
+
+export function stopStrategyWatchTimer(): void {
+  if (!strategyWatchTimer) return;
+  clearInterval(strategyWatchTimer);
+  strategyWatchTimer = null;
 }
 
 export async function checkStrategyWatch(force = false): Promise<void> {
