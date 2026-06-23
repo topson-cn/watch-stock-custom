@@ -1,6 +1,7 @@
 // 合并 vscodeConfig + staticConfig，提供单一配置访问入口
 import * as vscode from "vscode";
 import { isValidStockCode } from "./utils/stock";
+import { putStockFirst } from "./utils/watchlist";
 import { isTradingTime } from "./utils/time";
 import type {
   Alarm,
@@ -136,6 +137,13 @@ export const config = {
   },
   async saveStocks(stocks: string[]): Promise<void> {
     await raw().update("stocks", stocks, vscode.ConfigurationTarget.Global);
+  },
+  async promoteStock(stockCode: string): Promise<void> {
+    await raw().update(
+      "stocks",
+      putStockFirst(config.getStocks(), stockCode),
+      vscode.ConfigurationTarget.Global,
+    );
   },
   getMaxDisplayCount: () => read("maxDisplayCount"),
   getShowMiniName: () => read("showMiniName"),

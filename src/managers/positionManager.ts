@@ -72,6 +72,7 @@ async function upsertPosition(): Promise<void> {
     positions.push(next);
   }
   await config.savePositions(positions);
+  await config.promoteStock(selected.code);
   sendMsg(`已保存持仓: ${selected.label}`);
 }
 

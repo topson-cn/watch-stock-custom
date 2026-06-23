@@ -15,7 +15,8 @@
     "typecheck": "tsc --noEmit",
     "build": "npm run typecheck && node esbuild.config.mjs && vsce package",
     "test:strategy": "node --test tests/strategyWatch.test.mjs",
-    "test": "npm run test:positions && npm run test:signals && npm run test:strategy"
+    "test": "npm run test:positions && npm run test:signals && npm run test:strategy && npm run test:watchlist",
+    "test:watchlist": "node --test tests/watchlistOrder.test.mjs"
   },
   "categories": [
     "Other"
