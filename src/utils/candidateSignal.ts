@@ -14,6 +14,11 @@ interface DropSnapshot {
 
 const dropSnapshots = new Map<string, DropSnapshot>();
 const SNAPSHOT_TTL = 15 * 60 * 1000;
+const CANDIDATE_MIN_PRICE = 15;
+const CANDIDATE_MAX_PRICE = 150;
+const PREFERRED_CHANGE_MIN = 2;
+const PREFERRED_CHANGE_MAX = 3;
+const MAX_NEW_POSITION_CHANGE = 4;
 
 const SECTOR_RULES: Array<{ name: string; keywords: string[] }> = [
   { name: "人工智能", keywords: ["工业富联", "寒武", "浪潮", "中科曙光", "海光", "昆仑", "拓维", "大族"] },
@@ -125,7 +130,8 @@ export function buildStockCandidate(
   const shrinkingDrop = detectShrinkingDrop(quote);
 
   if (current <= 0 || quote.amount < 150000000) return null;
-  if (changePercent >= 9.8 || changePercent <= -6) return null;
+  if (current < CANDIDATE_MIN_PRICE || current > CANDIDATE_MAX_PRICE) return null;
+  if (changePercent >= MAX_NEW_POSITION_CHANGE || changePercent <= -6) return null;
 
   const volumeBreak60 =
     !!daily &&
@@ -133,8 +139,8 @@ export function buildStockCandidate(
     daily.prev.close <= daily.prevMa60 &&
     quote.amount > daily.amount5 * 1.25 &&
     changePercent > -1 &&
-    changePercent < 8.8;
-  const macdConfirm = !!daily?.macdGoldZero && changePercent > -1.5 && changePercent < 8.8;
+    changePercent < MAX_NEW_POSITION_CHANGE;
+  const macdConfirm = !!daily?.macdGoldZero && changePercent > -1.5 && changePercent < MAX_NEW_POSITION_CHANGE;
   const nearMa60 =
     !!daily && current >= daily.ma60 * 0.98 && current <= daily.ma60 * 1.08;
   const pullbackHold =
@@ -145,8 +151,8 @@ export function buildStockCandidate(
   const strongTurnover =
     sector.sectorChangePercent >= 1.2 &&
     quote.amount >= 1000000000 &&
-    changePercent >= 4 &&
-    changePercent < 9.5 &&
+    changePercent >= PREFERRED_CHANGE_MIN &&
+    changePercent < MAX_NEW_POSITION_CHANGE &&
     volumeRatio >= 1.15 &&
     volumeRatio <= 5.5 &&
     turnoverRatio <= 15 &&
@@ -155,7 +161,7 @@ export function buildStockCandidate(
     sector.sectorChangePercent >= 0.8 &&
     quote.amount >= 700000000 &&
     changePercent >= 1.5 &&
-    changePercent < 8.8 &&
+    changePercent < MAX_NEW_POSITION_CHANGE &&
     avgPrice > 0 &&
     current >= avgPrice &&
     open > 0 &&
@@ -204,12 +210,15 @@ export function buildStockCandidate(
     score += 8;
     reasons.push("价格贴近60日线，便于设置机械风控");
   }
-  if (changePercent > 0 && changePercent <= 4.5) {
+  if (changePercent >= PREFERRED_CHANGE_MIN && changePercent <= PREFERRED_CHANGE_MAX) {
+    score += 18;
+    reasons.push("涨幅处于2%-3%优先区间，避免高位追涨");
+  } else if (changePercent >= 1 && changePercent < PREFERRED_CHANGE_MIN) {
     score += 8;
-    reasons.push("涨幅未过热，避免高开猛冲追涨");
-  } else if (changePercent > 4.5 && changePercent < 9.5 && (strongTurnover || divergenceTurnStrong)) {
-    score += 4;
-    reasons.push("位置偏高，只按前排强势确认处理，不当低吸买点");
+    reasons.push("涨幅刚启动，继续观察量能和承接");
+  } else if (changePercent > PREFERRED_CHANGE_MAX && changePercent < MAX_NEW_POSITION_CHANGE) {
+    score += 2;
+    reasons.push("涨幅超过3%，只作谨慎候选，不追高");
   } else if (changePercent < 0 && changePercent >= -3) {
     score += 6;
     reasons.push("回踩幅度可控，重点看承接而不是补跌");
@@ -238,7 +247,7 @@ export function buildStockCandidate(
 
   const risk = daily
     ? strongTurnover || divergenceTurnStrong
-      ? `位置偏高，只看前排换手承接；若跌回均价/开盘价或放量跌破${daily.ma60.toFixed(2)}附近，放弃/机械止损。`
+      ? `涨幅接近追涨上限，只看前排换手承接；若跌回均价/开盘价或放量跌破${daily.ma60.toFixed(2)}附近，放弃/机械止损。`
       : `不追无承接急拉；若跌回60日线下方或放量跌破${daily.ma60.toFixed(2)}附近，放弃/机械止损。`
     : "缺少日线指标，只作为盘中观察；若板块转弱、跌回均价或放量下杀，放弃。";
 
