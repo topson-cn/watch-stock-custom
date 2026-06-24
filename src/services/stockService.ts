@@ -315,6 +315,9 @@ function buildDailyIndicator(bars: DailyBar[]): DailyIndicator | null {
 
   const closes = bars.map((bar) => bar.close);
   const amounts = bars.map((bar) => bar.amount);
+  const ma5 = avg(closes.slice(-5));
+  const ma10 = avg(closes.slice(-10));
+  const ma20 = avg(closes.slice(-20));
   const ma60 = avg(closes.slice(-60));
   const prevMa60 = avg(closes.slice(-61, -1));
   const amount5 = avg(amounts.slice(-6, -1));
@@ -341,6 +344,9 @@ function buildDailyIndicator(bars: DailyBar[]): DailyIndicator | null {
   return {
     last,
     prev,
+    ma5,
+    ma10,
+    ma20,
     ma60,
     prevMa60,
     amount5,

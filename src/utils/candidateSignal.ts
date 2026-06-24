@@ -108,6 +108,32 @@ function detectShrinkingDrop(quote: StockQuote): boolean {
   return dropExpanded && turnoverNotExpanded && quote.amount >= 200000000;
 }
 
+function calculateTrendScore(params: {
+  current: number;
+  avgPrice: number;
+  pullbackFromHigh: number;
+  changePercent: number;
+  sectorChangePercent: number;
+  daily: DailyIndicator | null;
+}): number {
+  const { current, avgPrice, pullbackFromHigh, changePercent, sectorChangePercent, daily } = params;
+  let score = 0;
+
+  if (daily) {
+    if (daily.ma5 > daily.ma10 && daily.ma10 > daily.ma20) score += 2;
+    if (daily.ma5 > 0 && current >= daily.ma5) score += 1;
+    else if (daily.ma10 > 0 && current >= daily.ma10) score += 1;
+    if (daily.last.low > daily.prev.low) score += 1;
+  }
+  if (avgPrice > 0 && current >= avgPrice) score += 1;
+
+  if (pullbackFromHigh > 2.5) score -= 2;
+  if (avgPrice > 0 && current < avgPrice) score -= 2;
+  if (sectorChangePercent - changePercent > 1.5) score -= 1;
+
+  return score;
+}
+
 export function buildStockCandidate(
   quote: StockQuote,
   positions: Position[],
@@ -128,6 +154,28 @@ export function buildStockCandidate(
   const prevClose = toNumber(quote.close);
   const sector = buildCandidateMarketContext(quote, quoteMap);
   const shrinkingDrop = detectShrinkingDrop(quote);
+  const pullbackFromHigh = high > 0 ? ((high - current) / high) * 100 : 0;
+  const highChangePercent = prevClose > 0 ? ((high - prevClose) / prevClose) * 100 : changePercent;
+  const trendScore = calculateTrendScore({
+    current,
+    avgPrice,
+    pullbackFromHigh,
+    changePercent,
+    sectorChangePercent: sector.sectorChangePercent,
+    daily,
+  });
+  const trendPullbackSupport =
+    trendScore >= 3 &&
+    changePercent >= 1.5 &&
+    changePercent <= 3.5 &&
+    pullbackFromHigh <= 2.2 &&
+    (avgPrice <= 0 || current >= avgPrice) &&
+    sector.sectorChangePercent >= 0;
+  const highPullbackWeak =
+    highChangePercent >= 5 &&
+    changePercent >= 1.5 &&
+    changePercent <= 3.5 &&
+    (pullbackFromHigh > 2.5 || (avgPrice > 0 && current < avgPrice) || volumeRatio > 3.5);
 
   if (current <= 0 || quote.amount < 150000000) return null;
   if (current < CANDIDATE_MIN_PRICE || current > CANDIDATE_MAX_PRICE) return null;
@@ -227,29 +275,74 @@ export function buildStockCandidate(
     score += 6;
     reasons.push(`量比${volumeRatio.toFixed(2)}，放量但未明显失控`);
   }
+  if (trendScore >= 4) {
+    score += 14;
+    reasons.push("上升趋势明确，回踩承接优先级提高");
+  } else if (trendScore >= 2) {
+    score += 7;
+    reasons.push("趋势结构尚可，优先看回踩承接确认");
+  } else if (trendScore <= -2) {
+    score -= 14;
+    reasons.push("分时/趋势结构走弱，降低推荐优先级");
+  }
+  if (trendPullbackSupport) {
+    score += 12;
+    reasons.push("场景：上升趋势回踩承接，可优先观察");
+  }
+  if (highPullbackWeak) {
+    score -= 24;
+    reasons.push("场景：高点明显回落，先按冲高回落处理");
+  }
 
-  const hasPrimarySignal = volumeBreak60 || macdConfirm || pullbackHold || strongTurnover || divergenceTurnStrong;
+  const hasPrimarySignal = volumeBreak60 || macdConfirm || pullbackHold || strongTurnover || divergenceTurnStrong || trendPullbackSupport;
   if (!hasPrimarySignal || score < 42) return null;
 
   let tier = "观察";
   if (score >= 78) tier = "优先";
   else if (score >= 62) tier = "可试";
 
-  const title = volumeBreak60
-    ? "买点试探"
-    : macdConfirm
-      ? "趋势确认"
+  const scenario = highPullbackWeak
+    ? "冲高回落走弱"
+    : trendPullbackSupport
+      ? "上升趋势回踩承接"
       : strongTurnover
-        ? "强势换手"
+        ? "前排强势换手"
         : divergenceTurnStrong
           ? "分歧转强"
-          : "洗盘识别";
+          : pullbackHold
+            ? "缩量急跌承接"
+            : macdConfirm
+              ? "趋势确认"
+              : "放量突破试探";
+  const tradeSuggestion = highPullbackWeak
+    ? "不推荐交易：高点回落未确认承接"
+    : trendPullbackSupport
+      ? "推荐观察：回踩不破均价可小仓试错"
+      : score >= 78
+        ? "推荐观察：模式内优先候选"
+        : score >= 62
+          ? "谨慎可试：只适合小仓确认"
+          : "仅观察：等承接确认";
+
+  const title = highPullbackWeak
+    ? "冲高回落"
+    : trendPullbackSupport
+      ? "趋势回踩"
+      : volumeBreak60
+        ? "买点试探"
+        : macdConfirm
+          ? "趋势确认"
+          : strongTurnover
+            ? "强势换手"
+            : divergenceTurnStrong
+              ? "分歧转强"
+              : "洗盘识别";
 
   const risk = daily
     ? strongTurnover || divergenceTurnStrong
-      ? `涨幅接近追涨上限，只看前排换手承接；若跌回均价/开盘价或放量跌破${daily.ma60.toFixed(2)}附近，放弃/机械止损。`
-      : `不追无承接急拉；若跌回60日线下方或放量跌破${daily.ma60.toFixed(2)}附近，放弃/机械止损。`
-    : "缺少日线指标，只作为盘中观察；若板块转弱、跌回均价或放量下杀，放弃。";
+      ? `场景：${scenario}；${tradeSuggestion}。若跌回均价/开盘价或放量跌破${daily.ma60.toFixed(2)}附近，放弃/机械止损。`
+      : `场景：${scenario}；${tradeSuggestion}。不追无承接急拉；若跌回60日线下方或放量跌破${daily.ma60.toFixed(2)}附近，放弃/机械止损。`
+    : `场景：${scenario}；${tradeSuggestion}。缺少日线指标，只作为盘中观察；若板块转弱、跌回均价或放量下杀，放弃。`;
 
   return {
     code: quote.code,
@@ -264,6 +357,9 @@ export function buildStockCandidate(
     score,
     tier,
     title,
+    scenario,
+    tradeSuggestion,
+    trendScore,
     reasons: reasons.slice(0, 5),
     risk,
   };

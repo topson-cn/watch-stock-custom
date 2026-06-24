@@ -679,9 +679,11 @@
           <div class="candidate-badges">
             <span class="candidate-badge">${escHtml(item.tier)}</span>
             <span class="candidate-badge">${escHtml(item.title)}</span>
+            <span class="candidate-badge">${escHtml(item.scenario || "场景待确认")}</span>
             <span class="candidate-badge">评分 ${escHtml(String(Math.round(item.score)))}</span>
             <span class="candidate-badge">${escHtml(item.sectorName)} ${item.sectorChangePercent > 0 ? "+" : ""}${escHtml(Number(item.sectorChangePercent).toFixed(2))}%</span>
           </div>
+          <div class="candidate-risk">${escHtml(item.tradeSuggestion || "仅观察：等承接确认")}</div>
           ${reasons}
           <div class="candidate-risk">${escHtml(item.risk || "")}</div>
         </div>`;
@@ -724,7 +726,7 @@
                     <span class="ov-code">${escHtml(String(item.code || "").toUpperCase())}</span>
                   </div>
                   <div class="ov-card-top">
-                    <span class="${cls}">${escHtml(hit.action || "")} · ${escHtml(item.title || "")}</span>
+                    <span class="${cls}">${escHtml(item.scenario || item.title || "")} · ${escHtml(hit.action || "")}</span>
                     <span class="${cls}">${sign}${escHtml(Number(item.changePercent || 0).toFixed(2))}%</span>
                   </div>
                   <div class="candidate-risk">匹配：${escHtml(matched)}；评分 ${escHtml(String(Math.round(item.score || 0)))}。</div>

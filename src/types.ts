@@ -155,6 +155,9 @@ export interface DailyBar {
 export interface DailyIndicator {
   last: DailyBar;
   prev: DailyBar;
+  ma5: number;
+  ma10: number;
+  ma20: number;
   ma60: number;
   prevMa60: number;
   amount5: number;
@@ -174,6 +177,9 @@ export interface BuildCandidate {
   score: number;
   tier: string;
   title: string;
+  scenario: string;
+  tradeSuggestion: string;
+  trendScore: number;
   reasons: string[];
   risk: string;
 }

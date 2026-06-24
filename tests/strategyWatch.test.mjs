@@ -84,3 +84,35 @@ test("summarizeStrategyWatch reports empty state clearly", async () => {
 
   assert.equal(summary, "当前推荐方向暂无模式内候选");
 });
+
+test("buildStrategyWatchResults prefers trend pullback support over weak high pullback", async () => {
+  const { buildStrategyWatchResults } = await loadStrategyModule();
+
+  const results = buildStrategyWatchResults([
+    candidate({
+      code: "sz002463",
+      name: "沪电股份",
+      sectorName: "通信",
+      score: 68,
+      title: "冲高回落",
+      scenario: "冲高回落走弱",
+      tradeSuggestion: "不推荐交易：高点回落未确认承接",
+      trendScore: -2,
+    }),
+    candidate({
+      code: "sz002475",
+      name: "立讯精密",
+      sectorName: "人工智能",
+      score: 66,
+      title: "趋势回踩",
+      scenario: "上升趋势回踩承接",
+      tradeSuggestion: "推荐观察：回踩不破均价可小仓试错",
+      trendScore: 4,
+    }),
+  ]);
+
+  const ai = results.find((item) => item.task.id === "ai-hardware-chain");
+  assert.equal(ai.hits[0].candidate.name, "立讯精密");
+  assert.equal(ai.hits[0].action, "推荐观察：回踩不破均价可小仓试错");
+  assert.equal(ai.hits[1].action, "不推荐交易：高点回落未确认承接");
+});

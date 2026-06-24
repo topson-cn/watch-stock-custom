@@ -199,9 +199,15 @@ function frontRankScore(candidate: BuildCandidate): number {
   else if (candidate.sectorChangePercent >= 1.5) score += 10;
   else if (candidate.sectorChangePercent < 0) score -= 8;
 
-  if (candidate.changePercent >= 4 && candidate.changePercent < 7) score += 10;
-  else if (candidate.changePercent >= 1.5 && candidate.changePercent < 4) score += 6;
+  if (candidate.scenario === "上升趋势回踩承接") score += 16;
+  else if (candidate.scenario === "冲高回落走弱") score -= 28;
+
+  if (candidate.changePercent >= 2 && candidate.changePercent <= 3) score += 10;
+  else if (candidate.changePercent >= 1.5 && candidate.changePercent < 4) score += 4;
   else if (candidate.changePercent < 0) score -= 5;
+
+  if (candidate.trendScore >= 4) score += 8;
+  else if (candidate.trendScore <= -2) score -= 8;
 
   if (candidate.volumeRatio >= 1.2 && candidate.volumeRatio <= 3.5) score += 5;
   if (candidate.tier === "优先") score += 8;
@@ -215,7 +221,9 @@ function buildAction(
   rankInTask: number,
 ): string {
   if (task.mode === "sentiment") return "情绪观察";
+  if (candidate.tradeSuggestion?.startsWith("不推荐")) return candidate.tradeSuggestion;
   if (rankInTask > 0) return "同题材后排观察，等回踩确认";
+  if (candidate.tradeSuggestion) return candidate.tradeSuggestion;
   if (candidate.title === "强势换手" || candidate.title === "分歧转强") {
     return "前排强势确认，轻仓观察";
   }
