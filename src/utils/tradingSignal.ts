@@ -59,6 +59,7 @@ function isBoughtToday(buyDate: string | undefined, now: Date): boolean {
 function calculateSellableShares(position: Position, now: Date): {
   sellableShares: number;
   todayBoughtShares: number;
+  todayBoughtCostAmount: number;
 } {
   if (position.lots?.length) {
     return position.lots.reduce(
@@ -66,20 +67,30 @@ function calculateSellableShares(position: Position, now: Date): {
         const shares = toNumber(lot.shares);
         if (isBoughtToday(lot.buyDate, now)) {
           result.todayBoughtShares += shares;
+          result.todayBoughtCostAmount += shares * toNumber(lot.costPrice);
         } else {
           result.sellableShares += shares;
         }
         return result;
       },
-      { sellableShares: 0, todayBoughtShares: 0 },
+      { sellableShares: 0, todayBoughtShares: 0, todayBoughtCostAmount: 0 },
     );
   }
 
   if (isBoughtToday(position.buyDate, now)) {
-    return { sellableShares: 0, todayBoughtShares: toNumber(position.shares) };
+    const todayBoughtShares = toNumber(position.shares);
+    return {
+      sellableShares: 0,
+      todayBoughtShares,
+      todayBoughtCostAmount: todayBoughtShares * toNumber(position.costPrice),
+    };
   }
 
-  return { sellableShares: toNumber(position.shares), todayBoughtShares: 0 };
+  return {
+    sellableShares: toNumber(position.shares),
+    todayBoughtShares: 0,
+    todayBoughtCostAmount: 0,
+  };
 }
 
 function isSectorStrong(marketContext?: MarketContext): boolean {
@@ -123,15 +134,39 @@ export function detectTradingSignals(
       const pullbackFromHigh = high > 0 ? ((high - current) / high) * 100 : 0;
       const reboundFromLow = low > 0 ? ((current - low) / low) * 100 : 0;
       const holdsAverage = avgPrice <= 0 || current >= avgPrice;
-      const { sellableShares, todayBoughtShares } = calculateSellableShares(
-        position,
-        now,
-      );
+      const { sellableShares, todayBoughtShares, todayBoughtCostAmount } =
+        calculateSellableShares(position, now);
       const sectorChangePercent = marketContext?.sectorChangePercent;
       const underperform =
         sectorChangePercent !== undefined
           ? sectorChangePercent - changePercent
           : 0;
+
+      const todayBoughtCost =
+        todayBoughtShares > 0 ? todayBoughtCostAmount / todayBoughtShares : 0;
+      const todayBoughtProfitRate =
+        todayBoughtCost > 0 ? ((current - todayBoughtCost) / todayBoughtCost) * 100 : 0;
+
+      if (
+        sellableShares > 0 &&
+        todayBoughtShares > 0 &&
+        todayBoughtProfitRate >= 0.8 &&
+        reboundFromLow >= 1.2 &&
+        pullbackFromHigh <= 2.8 &&
+        holdsAverage &&
+        (!marketContext || marketContext.sectorChangePercent >= -0.5)
+      ) {
+        signals.push({
+          stockCode: quote.code,
+          name: quote.name,
+          level: "info",
+          action: "watch",
+          title: "做T高抛",
+          suggestion: "可T：优先卖隔夜老仓，保留今日低吸仓",
+          message: `${quote.name} ${fmtPrice(current)}，今日低吸成本 ${fmtPrice(todayBoughtCost)}，较低吸价反弹 ${fmtPercent(todayBoughtProfitRate)}，较低点反弹 ${fmtPercent(reboundFromLow)}，可卖 ${fmtShares(sellableShares)} 股，今日买入 ${fmtShares(todayBoughtShares)} 股不可卖`,
+        });
+        continue;
+      }
 
       if (
         sellableShares > 0 &&

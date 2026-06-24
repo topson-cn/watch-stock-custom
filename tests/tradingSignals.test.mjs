@@ -205,8 +205,53 @@ test("detectTradingSignals reports T sell setup only for overnight sellable shar
     new Date("2026-06-15T10:30:00+08:00"),
   );
 
-  assert.equal(signals[0].title, "冲高做T");
-  assert.equal(signals[0].suggestion, "可T：只动隔夜可卖仓，分批高抛");
+  assert.equal(signals[0].title, "做T高抛");
+  assert.equal(signals[0].suggestion, "可T：优先卖隔夜老仓，保留今日低吸仓");
+  assert.match(signals[0].message, /可卖 200 股/);
+  assert.match(signals[0].message, /今日买入 200 股不可卖/);
+});
+
+test("detectTradingSignals reports T sell after intraday buy rebounds even when aggregate position is losing", async () => {
+  const { detectTradingSignals } = await loadSignalModule();
+
+  const signals = detectTradingSignals(
+    [
+      {
+        name: "北方稀土",
+        code: "sh600111",
+        current: "49.30",
+        close: "49.95",
+        high: "50.12",
+        low: "48.03",
+        avgPrice: "49.05",
+        changePercent: "-1.30",
+        volumeRatio: "1.80",
+        amount: 6162476719,
+      },
+    ],
+    [
+      {
+        stockCode: "sh600111",
+        shares: 400,
+        costPrice: 51.145,
+        lots: [
+          { shares: 200, costPrice: 53.99, buyDate: "2026-06-22" },
+          { shares: 200, costPrice: 48.3, buyDate: "2026-06-24" },
+        ],
+      },
+    ],
+    {
+      indexChangePercent: 0.8,
+      sectorChangePercent: 0.2,
+      sectorName: "稀土",
+    },
+    new Date("2026-06-24T14:46:00+08:00"),
+  );
+
+  assert.equal(signals[0].title, "做T高抛");
+  assert.equal(signals[0].suggestion, "可T：优先卖隔夜老仓，保留今日低吸仓");
+  assert.match(signals[0].message, /今日低吸成本 48\.30/);
+  assert.match(signals[0].message, /较低吸价反弹 2\.07%/);
   assert.match(signals[0].message, /可卖 200 股/);
   assert.match(signals[0].message, /今日买入 200 股不可卖/);
 });
